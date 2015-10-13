@@ -117,3 +117,9 @@ vagrant@vagrant-ubuntu-trusty-64:~$ sudo apt-get install git curl gdb-multiarch 
 
 And that's all you need to do for Session 0!
 
+
+2. Google Hangouts
+------------------
+
+We'll most probably be holding it teleconference style over Google Hangouts so
+have an account ready!
