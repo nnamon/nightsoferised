@@ -88,13 +88,6 @@ vagrant@vagrant-ubuntu-trusty-64:~$ uname -a
 Linux vagrant-ubuntu-trusty-64 3.13.0-65-generic #106-Ubuntu SMP Fri Oct 2 22:08:27 UTC 2015 x86_64 x86_64 x86_64 GNU/Linux
 ```
 
-Switch Ubuntu apt sources to use Singapore mirrors.
-
-```
-vagrant@vagrant-ubuntu-trusty-64:~$ sudo cp /etc/apt/sources.list /etc/apt/sources.list.bak
-vagrant@vagrant-ubuntu-trusty-64:~$ sudo sh -c 'sed -e "s:archive.ubuntu.com:sg.archive.ubuntu.com:g" /etc/apt/sources.list.bak > /etc/apt/sources.list'
-```
-
 Now, update Ubuntu.
 
 ```
@@ -109,10 +102,19 @@ Calculating upgrade... Done
 vagrant@vagrant-ubuntu-trusty-64:~$
 ```
 
+Enable the system to run 32 bit binaries:
+
+```
+vagrant@vagrant-ubuntu-trusty-64:~$ sudo dpkg --add-architecture i386
+vagrant@vagrant-ubuntu-trusty-64:~$ sudo apt-get update
+vagrant@vagrant-ubuntu-trusty-64:~$ sudo apt-get install libc6:i386 libncurses5:i386 libstdc++6:i386
+
+```
+
 Install these for now:
 
 ```
-vagrant@vagrant-ubuntu-trusty-64:~$ sudo apt-get install git curl gdb-multiarch python
+vagrant@vagrant-ubuntu-trusty-64:~$ sudo apt-get install git gcc g++ gdb-multiarch python
 ```
 
 And that's all you need to do for Session 0!
