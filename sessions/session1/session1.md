@@ -695,6 +695,8 @@ puts("Wrong!"Wrong!
 
 Yep, it's calling strtol on our supplied argument. So what does it do
 after converting our argument?
+
+```
  8048475:       81 7d f4 ef be ad de    cmpl   $0xdeadbeef,-0xc(%ebp)
  804847c:       75 12                   jne    8048490 <main+0x65>
 ```
