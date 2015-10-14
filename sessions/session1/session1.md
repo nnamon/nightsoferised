@@ -203,6 +203,148 @@ Helloo!
 ```
 
 
+### objdump
+
+objdump is actually the swiss army knife of extracting information from a
+binary. You can do a whole lot of things with it, but for now, let's just do a
+disassembly.
+
+```
+vagrant@erised:~/.../session1/demotools$ objdump -d demotools
+
+demotools:     file format elf64-x86-64
+
+
+Disassembly of section .init:
+
+0000000000400418 <_init>:
+  400418:       48 83 ec 08             sub    $0x8,%rsp
+  40041c:       48 8b 05 d5 0b 20 00    mov    0x200bd5(%rip),%rax        # 600ff8 <_DYNAMIC+0x1d0>
+  400423:       48 85 c0                test   %rax,%rax
+  400426:       74 05                   je     40042d <_init+0x15>
+  400428:       e8 53 00 00 00          callq  400480 <__gmon_start__@plt>
+  40042d:       48 83 c4 08             add    $0x8,%rsp
+  400431:       c3                      retq
+
+... snip ...
+
+000000000040057d <main>:
+  40057d:       55                      push   %rbp
+  40057e:       48 89 e5                mov    %rsp,%rbp
+  400581:       48 83 ec 10             sub    $0x10,%rsp
+  400585:       89 7d fc                mov    %edi,-0x4(%rbp)
+  400588:       48 89 75 f0             mov    %rsi,-0x10(%rbp)
+  40058c:       48 8b 45 f0             mov    -0x10(%rbp),%rax
+  400590:       48 83 c0 08             add    $0x8,%rax
+  400594:       48 8b 00                mov    (%rax),%rax
+  400597:       48 89 c7                mov    %rax,%rdi
+  40059a:       b8 00 00 00 00          mov    $0x0,%eax
+  40059f:       e8 ac fe ff ff          callq  400450 <printf@plt>
+  4005a4:       b8 00 00 00 00          mov    $0x0,%eax
+  4005a9:       e8 02 00 00 00          callq  4005b0 <say_hello>
+  4005ae:       c9                      leaveq
+  4005af:       c3                      retq
+
+00000000004005b0 <say_hello>:
+  4005b0:       55                      push   %rbp
+  4005b1:       48 89 e5                mov    %rsp,%rbp
+  4005b4:       48 83 ec 10             sub    $0x10,%rsp
+  4005b8:       48 c7 45 f0 94 06 40    movq   $0x400694,-0x10(%rbp)
+  4005bf:       00
+  4005c0:       48 c7 45 f8 9d 06 40    movq   $0x40069d,-0x8(%rbp)
+  4005c7:       00
+  4005c8:       48 8b 55 f8             mov    -0x8(%rbp),%rdx
+  4005cc:       48 8b 45 f0             mov    -0x10(%rbp),%rax
+  4005d0:       48 89 d6                mov    %rdx,%rsi
+  4005d3:       48 89 c7                mov    %rax,%rdi
+  4005d6:       e8 95 fe ff ff          callq  400470 <strcmp@plt>
+  4005db:       85 c0                   test   %eax,%eax
+  4005dd:       75 11                   jne    4005f0 <say_hello+0x40>
+  4005df:       48 8b 45 f0             mov    -0x10(%rbp),%rax
+  4005e3:       48 89 c7                mov    %rax,%rdi
+  4005e6:       b8 00 00 00 00          mov    $0x0,%eax
+  4005eb:       e8 60 fe ff ff          callq  400450 <printf@plt>
+  4005f0:       48 8b 45 f8             mov    -0x8(%rbp),%rax
+  4005f4:       48 89 c7                mov    %rax,%rdi
+  4005f7:       b8 00 00 00 00          mov    $0x0,%eax
+  4005fc:       e8 4f fe ff ff          callq  400450 <printf@plt>
+  400601:       c9                      leaveq
+  400602:       c3                      retq
+  400603:       66 2e 0f 1f 84 00 00    nopw   %cs:0x0(%rax,%rax,1)
+  40060a:       00 00 00
+  40060d:       0f 1f 00                nopl   (%rax)
+
+... snip ...
+```
+
+### file
+
+file is something I use for everything from crypto to forensics to reversing.
+It's the most amazing tool in the world. Seriously.
+
+```
+vagrant@erised:~/.../session1/demotools$ file demotools
+demotools: ELF 64-bit LSB  executable, x86-64, version 1 (SYSV), dynamically
+linked (uses shared libs), for GNU/Linux 2.6.24,
+BuildID[sha1]=1b01e4e6f5d0a64f26fae1dd36f100fbb20f54dc, not stripped
+```
+
+### strings
+
+Another basic tool that you should always use to get a better idea of what you
+are looking at. Don't run it vanilla on [untrusted binaries
+though](http://lcamtuf.blogspot.sg/2014/10/psa-dont-run-strings-on-untrusted-files.html).
+
+```
+vagrant@erised:~/.../session1/demotools$ strings demotools
+/lib64/ld-linux-x86-64.so.2
+libc.so.6
+printf
+strcmp
+__libc_start_main
+__gmon_start__
+GLIBC_2.2.5
+UH-H
+UH-H
+Goaway!
+Helloo!
+;*3$"
+GCC: (Ubuntu 4.8.4-2ubuntu1~14.04) 4.8.4
+GCC: (Ubuntu 4.8.2-19ubuntu1) 4.8.2
+... snip ...
+text
+.fini
+.rodata
+.eh_frame_hdr
+.eh_frame
+.init_array
+.fini_array
+.jcr
+.dynamic
+.got
+.got.plt
+.data
+.bss
+... snip ...
+data_start
+_edata
+_fini
+printf@@GLIBC_2.2.5
+__libc_start_main@@GLIBC_2.2.5
+__data_start
+strcmp@@GLIBC_2.2.5
+__gmon_start__
+__dso_handle
+_IO_stdin_used
+__libc_csu_init
+_end
+_start
+__bss_start
+main
+say_hello
+... snip ...
+```
+
 Quick Assembly Primer
 ---------------------
 
