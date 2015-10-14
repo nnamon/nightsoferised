@@ -18,6 +18,20 @@ Objectives
 Cloning the Erised Repo
 -----------------------
 
+In your virtualised environment you should have set up in Session 0, clone the
+Erised repository to your home directory. We'll have to update it every session
+with the new content in the repository.
+
+```
+vagrant@erised:~$ git clone
+https://github.com/nnamon/nightsoferised.git
+Cloning into 'nightsoferised'...
+remote: Counting objects: 33, done.
+remote: Compressing objects: 100% (21/21), done.
+remote: Total 33 (delta 4), reused 32 (delta 3), pack-reused 0
+Unpacking objects: 100% (33/33), done.
+Checking connectivity... done.
+```
 
 Basic Tools Set Up
 ------------------
@@ -51,6 +65,141 @@ our demotools program.
 
 Hint: It's located in sessions/session1/demotools/.
 
+```
+vagrant@erised:~$ cd nightsoferised/sessions/session1/demotools/
+vagrant@erised:~/.../session1/demotools$ nm demotools
+0000000000601048 B __bss_start
+0000000000601048 b completed.6973
+0000000000601038 D __data_start
+0000000000601038 W data_start
+00000000004004c0 t deregister_tm_clones
+0000000000400530 t __do_global_dtors_aux
+0000000000600e18 t __do_global_dtors_aux_fini_array_entry
+0000000000601040 D __dso_handle
+0000000000600e28 d _DYNAMIC
+0000000000601048 D _edata
+0000000000601050 B _end
+0000000000400684 T _fini
+0000000000400550 t frame_dummy
+0000000000600e10 t __frame_dummy_init_array_entry
+00000000004007f8 r __FRAME_END__
+0000000000601000 d _GLOBAL_OFFSET_TABLE_
+                 w __gmon_start__
+0000000000400418 T _init
+0000000000600e18 t __init_array_end
+0000000000600e10 t __init_array_start
+0000000000400690 R _IO_stdin_used
+                 w _ITM_deregisterTMCloneTable
+                 w _ITM_registerTMCloneTable
+0000000000600e20 d __JCR_END__
+0000000000600e20 d __JCR_LIST__
+                 w _Jv_RegisterClasses
+0000000000400680 T __libc_csu_fini
+0000000000400610 T __libc_csu_init
+                 U __libc_start_main@@GLIBC_2.2.5
+000000000040057d T main
+                 U printf@@GLIBC_2.2.5
+00000000004004f0 t register_tm_clones
+00000000004005b0 T say_hello
+0000000000400490 T _start
+                 U strcmp@@GLIBC_2.2.5
+0000000000601048 D __TMC_END__
+```
+
+The letters mean some pretty important things. D for example, means that that
+symbols resides with the data section, T, the text or code section, R means
+read-only data, etc. Check the manual page for a full description of all the
+flags.
+
+Now, these symbols aren't always included in the binaries (usually they are
+stripped in CTFs) but when they are, they're really useful for reversing.
+
+
+### ltrace
+
+Now, ltrace is a really cool GNU binutils tool that lets you trace library cools
+during the program's execution.
+
+'nuff said.
+
+```
+vagrant@erised:~/.../session1/demotools $  ltrace ./demotools
+__libc_start_main(0x40057d, 1, 0x7fffd0a999d8, 0x400610 <unfinished ...>
+printf(nil)                                                                                  = -1
+strcmp("Goaway!\n", "Helloo!\n")                                                             = -1
+printf("Helloo!\n"Helloo!
+)                                                                          = 8
++++ exited (status 8) +++
+```
+
+### strace
+
+Likewise, strace lets you trace system calls and signals during the program's
+execution.
+
+```
+vagrant@erised:~/.../session1/demotools$ strace ./demotools
+execve("./demotools", ["./demotools"], [/* 20 vars */]) = 0
+brk(0)                                  = 0x104c000
+access("/etc/ld.so.nohwcap", F_OK)      = -1 ENOENT (No such file or directory)
+mmap(NULL, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f04942d4000
+access("/etc/ld.so.preload", R_OK)      = -1 ENOENT (No such file or directory)
+open("/etc/ld.so.cache", O_RDONLY|O_CLOEXEC) = 3
+fstat(3, {st_mode=S_IFREG|0644, st_size=28039, ...}) = 0
+mmap(NULL, 28039, PROT_READ, MAP_PRIVATE, 3, 0) = 0x7f04942cd000
+close(3)                                = 0
+access("/etc/ld.so.nohwcap", F_OK)      = -1 ENOENT (No such file or directory)
+open("/lib/x86_64-linux-gnu/libc.so.6", O_RDONLY|O_CLOEXEC) = 3
+read(3, "\177ELF\2\1\1\0\0\0\0\0\0\0\0\0\3\0>\0\1\0\0\0\320\37\2\0\0\0\0\0"..., 832) = 832
+fstat(3, {st_mode=S_IFREG|0755, st_size=1840928, ...}) = 0
+mmap(NULL, 3949248, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_DENYWRITE, 3, 0) = 0x7f0493cef000
+mprotect(0x7f0493eaa000, 2093056, PROT_NONE) = 0
+mmap(0x7f04940a9000, 24576, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x1ba000) = 0x7f04940a9000
+mmap(0x7f04940af000, 17088, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) = 0x7f04940af000
+close(3)                                = 0
+mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f04942cc000
+mmap(NULL, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f04942ca000
+arch_prctl(ARCH_SET_FS, 0x7f04942ca740) = 0
+mprotect(0x7f04940a9000, 16384, PROT_READ) = 0
+mprotect(0x600000, 4096, PROT_READ)     = 0
+mprotect(0x7f04942d6000, 4096, PROT_READ) = 0
+munmap(0x7f04942cd000, 28039)           = 0
+fstat(1, {st_mode=S_IFCHR|0620, st_rdev=makedev(136, 0), ...}) = 0
+mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f04942d3000
+write(1, "Helloo!\n", 8Helloo!
+)                = 8
+exit_group(8)                           = ?
++++ exited with 8 +++
+```
+
+
+### gdb
+
+Well, this is a little too large to cover in one section but let's just
+demonstrate how to run a binary.
+
+```
+vagrant@erised:~/.../session1/demotools$ gdb demotools
+GNU gdb (Ubuntu 7.7-0ubuntu3) 7.7
+Copyright (C) 2014 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.  Type "show copying"
+and "show warranty" for details.
+This GDB was configured as "x86_64-linux-gnu".
+Type "show configuration" for configuration details.
+For bug reporting instructions, please see:
+<http://www.gnu.org/software/gdb/bugs/>.
+Find the GDB manual and other documentation resources online at:
+<http://www.gnu.org/software/gdb/documentation/>.
+For help, type "help".
+Type "apropos word" to search for commands related to "word"...
+Reading symbols from demotools...(no debugging symbols found)...done.
+(gdb) r
+Starting program: /home/vagrant/nightsoferised/sessions/session1/demotools/demotools
+Helloo!
+[Inferior 1 (process 1356) exited with code 010]
+(gdb) Quit
 ```
 
 
