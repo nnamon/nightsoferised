@@ -742,8 +742,8 @@ Solved!
 
 ### Babyme
 
-<I'll do this with you during the session>
-<but I'll fill this out in full later>
+I'll do this with you during the session
+but I'll fill this out in full later
 
 ### Babymagic
 
