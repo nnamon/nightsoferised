@@ -301,8 +301,6 @@ vagrant@erised:~/.../session1/demotools$ strings demotools
 libc.so.6
 printf
 strcmp
-__libc_start_main
-__gmon_start__
 GLIBC_2.2.5
 UH-H
 UH-H
@@ -330,16 +328,8 @@ data_start
 _edata
 _fini
 printf@@GLIBC_2.2.5
-__libc_start_main@@GLIBC_2.2.5
-__data_start
 strcmp@@GLIBC_2.2.5
-__gmon_start__
-__dso_handle
-_IO_stdin_used
-__libc_csu_init
-_end
 _start
-__bss_start
 main
 say_hello
 ... snip ...
@@ -348,7 +338,125 @@ say_hello
 Quick Assembly Primer
 ---------------------
 
+Now, obviously, assembly, especially x86-64 assembly is not something you can
+get used to in an hour. So we'll just cover superficially what you need to be
+able to read for this session.
+
+Consider this fragment:
+
+```
+000000000040057d <main>:
+  40057d:       55                      push   %rbp
+  40057e:       48 89 e5                mov    %rsp,%rbp
+  400581:       48 83 ec 10             sub    $0x10,%rsp
+  400585:       89 7d fc                mov    %edi,-0x4(%rbp)
+  400588:       48 89 75 f0             mov    %rsi,-0x10(%rbp)
+  40058c:       48 8b 45 f0             mov    -0x10(%rbp),%rax
+  400590:       48 83 c0 08             add    $0x8,%rax
+  400594:       48 8b 00                mov    (%rax),%rax
+  400597:       48 89 c7                mov    %rax,%rdi
+  40059a:       b8 00 00 00 00          mov    $0x0,%eax
+  40059f:       e8 ac fe ff ff          callq  400450 <printf@plt>
+  4005a4:       b8 00 00 00 00          mov    $0x0,%eax
+  4005a9:       e8 02 00 00 00          callq  4005b0 <say_hello>
+  4005ae:       c9                      leaveq
+  4005af:       c3                      retq
+```
+
+This is in AT&T or GAS syntax which means that most instructions take the form
+
+```
+mnenomic source, destination
+```
+
+Also, mnenomics tend to have operation suffixes based on the size of the operand
+that is being manipulated.
+
+There are sigils involved as well, registers are prefixed with % and constant
+numbers are prefixed with $.
+
+Now, contrast the above with something in Intel syntax:
+
+```
+Dump of assembler code for function main:
+   0x000000000040057d <+0>:     push   rbp
+   0x000000000040057e <+1>:     mov    rbp,rsp
+   0x0000000000400581 <+4>:     sub    rsp,0x10
+   0x0000000000400585 <+8>:     mov    DWORD PTR [rbp-0x4],edi
+   0x0000000000400588 <+11>:    mov    QWORD PTR [rbp-0x10],rsi
+   0x000000000040058c <+15>:    mov    rax,QWORD PTR [rbp-0x10]
+   0x0000000000400590 <+19>:    add    rax,0x8
+   0x0000000000400594 <+23>:    mov    rax,QWORD PTR [rax]
+   0x0000000000400597 <+26>:    mov    rdi,rax
+   0x000000000040059a <+29>:    mov    eax,0x0
+   0x000000000040059f <+34>:    call   0x400450 <printf@plt>
+   0x00000000004005a4 <+39>:    mov    eax,0x0
+   0x00000000004005a9 <+44>:    call   0x4005b0 <say_hello>
+   0x00000000004005ae <+49>:    leave
+   0x00000000004005af <+50>:    ret
+```
+
+Now, the order of the source and destination operands is flipped compared to
+AT&T syntax. Also, square brackets.
+
+Important operations to know are:
+
+```
+40057d: 55                      push   %rbp
+40066a: 5b                      pop    %rbx
+```
+
+Push operations manipulate data on the stack. The stack frame is usually
+handled through storing addresses in the %rbp and %rsp registers. Every time a
+push happens, the data is pushed into the addressed at %rsp and %rsp is
+incremented (the size depends on the architecture). Pop operations are the
+reverse. Data from memory is put into a register and the %rsp is decremented.
+
+```
+400588: 48 89 75 f0             mov    %rsi,-0x10(%rbp)
+```
+
+Move operations are fairly common. They generally move data from register to
+register, register to memory, or memory to register. Offsets from the addresses
+stored in registers are also allowed.
+
+```
+400581: 48 83 ec 10             sub    $0x10,%rsp
+40042d: 48 83 c4 08             add    $0x8,%rsp
+400634: 31 db                   xor    %ebx,%ebx
+400499: 48 83 e4 f0             and    $0xfffffffffffffff0,%rsp
+```
+
+Arithmetic operations are also fairly common.
+
+```
+4005fc: e8 4f fe ff ff          callq  400450 <printf@plt>
+4005ae: c9                      leaveq
+4005af: c3                      retq
+```
+
+These instructions are the main ways a program handles function calls and
+returning from those function calls. We won't talk about the call stack this
+session but we will in future sessions.
+
+```
+400530: 80 3d 11 0b 20 00 00    cmpb   $0x0,0x200b11(%rip)
+400537: 75 11                   jne    40054a <__do_global_dtors_aux+0x1a>
+```
+
+Branching instructions are also very important as they determine which path the
+program execution takes. These work because comparison (and some arithmetic)
+instructions set certain flags in the processor. These flags are used to check
+whether to take a jump or not.
+
+```
+400527: ff e2                   jmpq   *%rdx
+```
+
+Of course, there are also non-conditional branching instructions.
+
 
 Simple Crackme Warmup
 ---------------------
 
+Now that's out of the way, let's play around with two simple crackme exercises.
