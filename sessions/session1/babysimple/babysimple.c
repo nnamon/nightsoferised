@@ -4,7 +4,7 @@ int main(int argc, char ** argv) {
         return 1;
     }
 
-    int password = strtol(argv[1], 0, 10);
+    int password = strtoul(argv[1], 0, 10);
     if (password == 0xdeadbeef) {
         printf("Correct!\n");
     }
