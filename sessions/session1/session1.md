@@ -460,3 +460,291 @@ Simple Crackme Warmup
 ---------------------
 
 Now that's out of the way, let's play around with two simple crackme exercises.
+
+
+### Babysimple
+
+Let's try and run the binary.
+
+```
+vagrant@erised:~$ cd nightsoferised/sessions/session1/babysimple/
+vagrant@erised:~/.../session1/babysimple$ ./babysimple
+Usage: ./babysimple <guess>
+vagrant@erised:~/.../session1/babysimple$ ./babysimple asd
+Wrong!
+vagrant@erised:~/.../session1/babysimple$ ./babysimple 123
+Wrong!
+```
+
+Okay, let's do our secret file magic!
+
+```
+vagrant@erised:~/.../session1/babysimple$ file babysimple
+babysimple: ELF 32-bit LSB  executable, Intel 80386, version 1 (SYSV),
+dynamically linked (uses shared libs), for GNU/Linux 2.6.32,
+BuildID[sha1]=0ce4c7e422ebc8dec9d03374d5a3263e154982fa, not stripped
+```
+
+It's a simple unstripped 64 bit elf binary. Now for some strings magic!
+
+```
+vagrant@erised:~/.../session1/babysimple$ strings babysimple
+/lib/ld-linux.so.2
+libc.so.6
+_IO_stdin_used
+puts
+strtol
+__libc_start_main
+__gmon_start__
+GLIBC_2.0
+PTRh
+QVh+
+UWVS
+t$,U
+[^_]
+Usage: ./babysimple <guess>
+Correct!
+Wrong!
+;*2$"(
+GCC: (GNU) 5.2.0
+.symtab
+.strtab
+.shstrtab
+.interp
+... snip ...
+```
+
+Looks like our objective is to get the program to output 'Correct!'
+
+Now, if we objdump the file to disassemble it, we can see that there's only
+the main function that's worth looking at:
+
+```
+vagrant@erised:~/.../session1/babysimple$ objdump -d babysimple
+... snip ...
+0804842b <main>:
+ 804842b:       8d 4c 24 04             lea    0x4(%esp),%ecx
+ 804842f:       83 e4 f0                and    $0xfffffff0,%esp
+ 8048432:       ff 71 fc                pushl  -0x4(%ecx)
+ 8048435:       55                      push   %ebp
+ 8048436:       89 e5                   mov    %esp,%ebp
+ 8048438:       51                      push   %ecx
+ 8048439:       83 ec 14                sub    $0x14,%esp
+ 804843c:       89 c8                   mov    %ecx,%eax
+ 804843e:       83 38 01                cmpl   $0x1,(%eax)
+ 8048441:       7f 17                   jg     804845a <main+0x2f>
+ 8048443:       83 ec 0c                sub    $0xc,%esp
+ 8048446:       68 30 85 04 08          push   $0x8048530
+ 804844b:       e8 a0 fe ff ff          call   80482f0 <puts@plt>
+ 8048450:       83 c4 10                add    $0x10,%esp
+ 8048453:       b8 01 00 00 00          mov    $0x1,%eax
+ 8048458:       eb 4b                   jmp    80484a5 <main+0x7a>
+ 804845a:       8b 40 04                mov    0x4(%eax),%eax
+ 804845d:       83 c0 04                add    $0x4,%eax
+ 8048460:       8b 00                   mov    (%eax),%eax
+ 8048462:       83 ec 04                sub    $0x4,%esp
+ 8048465:       6a 0a                   push   $0xa
+ 8048467:       6a 00                   push   $0x0
+ 8048469:       50                      push   %eax
+ 804846a:       e8 b1 fe ff ff          call   8048320 <strtoul@plt>
+ 804846f:       83 c4 10                add    $0x10,%esp
+ 8048472:       89 45 f4                mov    %eax,-0xc(%ebp)
+ 8048475:       81 7d f4 ef be ad de    cmpl   $0xdeadbeef,-0xc(%ebp)
+ 804847c:       75 12                   jne    8048490 <main+0x65>
+ 804847e:       83 ec 0c                sub    $0xc,%esp
+ 8048481:       68 4c 85 04 08          push   $0x804854c
+ 8048486:       e8 65 fe ff ff          call   80482f0 <puts@plt>
+ 804848b:       83 c4 10                add    $0x10,%esp
+ 804848e:       eb 10                   jmp    80484a0 <main+0x75>
+ 8048490:       83 ec 0c                sub    $0xc,%esp
+ 8048493:       68 55 85 04 08          push   $0x8048555
+ 8048498:       e8 53 fe ff ff          call   80482f0 <puts@plt>
+ 804849d:       83 c4 10                add    $0x10,%esp
+ 80484a0:       b8 00 00 00 00          mov    $0x0,%eax
+ 80484a5:       8b 4d fc                mov    -0x4(%ebp),%ecx
+ 80484a8:       c9                      leave
+ 80484a9:       8d 61 fc                lea    -0x4(%ecx),%esp
+ 80484ac:       c3                      ret
+ 80484ad:       66 90                   xchg   %ax,%ax
+ 80484af:       90                      nop
+... snip ...
+```
+
+Now, can we make sense of what's happening here? First, we identify
+the bit that checks whether there are any arguments present:
+
+```
+ 804843c:       89 c8                   mov    %ecx,%eax
+ 804843e:       83 38 01                cmpl   $0x1,(%eax)
+ 8048441:       7f 17                   jg     804845a <main+0x2f>
+ 8048443:       83 ec 0c                sub    $0xc,%esp
+ 8048446:       68 30 85 04 08          push   $0x8048530
+ 804844b:       e8 a0 fe ff ff          call   80482f0 <puts@plt>
+```
+
+Now, we can guess that whatever is in %eax here is probably the number
+of arguments to the C program (or the argc). How do we know? Let's
+verify by starting gdb and checking. Let's break on 0x804843e.
+
+```
+vagrant@erised:~/.../session1/babysimple$ gdb babysimple
+GNU gdb (Ubuntu 7.7-0ubuntu3) 7.7
+Copyright (C) 2014 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.  Type "show copying"
+and "show warranty" for details.
+This GDB was configured as "x86_64-linux-gnu".
+Type "show configuration" for configuration details.
+For bug reporting instructions, please see:
+<http://www.gnu.org/software/gdb/bugs/>.
+Find the GDB manual and other documentation resources online at:
+<http://www.gnu.org/software/gdb/documentation/>.
+For help, type "help".
+Type "apropos word" to search for commands related to "word"...
+Reading symbols from babysimple...(no debugging symbols found)...done.
+(gdb) br *0x804843e
+Breakpoint 1 at 0x804843e
+(gdb) r
+Starting program: /home/vagrant/nightsoferised/sessions/session1/babysimple/babysimple
+
+Breakpoint 1, 0x0804843e in main ()
+(gdb) x/xw $eax
+0xffffd690:     0x00000001
+```
+
+Well, a value of one is just what you'd expect from giving a program no arguments.
+Let's try to give it some arguments this time.
+
+```
+(gdb) r 123
+The program being debugged has been started already.
+Start it from the beginning? (y or n) y
+Starting program: /home/vagrant/nightsoferised/sessions/session1/babysimple/babysimple 123
+
+Breakpoint 1, 0x0804843e in main ()
+(gdb) x/xw $eax
+0xffffd690:     0x00000002
+(gdb) r 123 123
+The program being debugged has been started already.
+Start it from the beginning? (y or n) y
+Starting program: /home/vagrant/nightsoferised/sessions/session1/babysimple/babysimple 123 123
+
+Breakpoint 1, 0x0804843e in main ()
+(gdb) x/xw $eax
+0xffffd670:     0x00000003
+```
+
+Our hunch was right. So it is the number of arguments. Now, what does it do with
+this information?
+
+```
+ 804843e:       83 38 01                cmpl   $0x1,(%eax)
+ 8048441:       7f 17                   jg     804845a <main+0x2f>
+```
+
+It checks if it's greater than it of course! So there must be at least one argument.
+Indeed, if there isn't it prints something.
+
+```
+ 8048443:       83 ec 0c                sub    $0xc,%esp
+ 8048446:       68 30 85 04 08          push   $0x8048530
+ 804844b:       e8 a0 fe ff ff          call   80482f0 <puts@plt>
+```
+
+We can figure out what it prints in gdb.
+
+```
+(gdb) x/s 0x8048530
+0x8048530:      "Usage: ./babysimple <guess>"
+```
+
+So it's just a usage string. Let's move on.
+
+```
+ 804845a:       8b 40 04                mov    0x4(%eax),%eax
+ 804845d:       83 c0 04                add    $0x4,%eax
+ 8048460:       8b 00                   mov    (%eax),%eax
+ 8048462:       83 ec 04                sub    $0x4,%esp
+ 8048465:       6a 0a                   push   $0xa
+ 8048467:       6a 00                   push   $0x0
+ 8048469:       50                      push   %eax
+ 804846a:       e8 b1 fe ff ff          call   8048320 <strtoul@plt>
+```
+
+This is where it jumps to if there are arguments to the program.
+What is it doing? It's taking the one word after the address in
+%eax. And recall that previously, the address that %eax contained
+contains the argc. One word after that is probably the address of
+argv. And then, it takes the address one word after that. This is
+probably our first argument. That is argv[1].
+
+After that it calls strtoul on it.
+
+How can we verify this? Let's be lazy and use ltrace since a library
+call is involved.
+
+```
+vagrant@erised:~/.../session1/babysimple$ ltrace ./babysimple 123
+__libc_start_main(0x804842b, 2, 0xff9cd154, 0x80484b0 <unfinished ...>
+strtol(0xff9ce8bb, 0, 10, 0x80484fb)                                                         = 123
+puts("Wrong!"Wrong!
+)                                                                               = 7
++++ exited (status 0) +++
+```
+
+Yep, it's calling strtol on our supplied argument. So what does it do
+after converting our argument?
+
+```
+ 8048475:       81 7d f4 ef be ad de    cmpl   $0xdeadbeef,-0xc(%ebp)
+ 804847c:       75 12                   jne    8048490 <main+0x65>
+```
+
+Looks like it compares the result to 0xdeadbeef. So does mean we can
+just supply 0xdeadbeef? :D
+
+```
+vagrant@erised:~/.../session1/babysimple$ ./babysimple 0xdeadbeef
+Wrong!
+```
+
+Haha, no. If you recall the call to strtoul was this:
+
+```
+strtoul(0xff9ce8bb, 0, 10, 0x80484fb)
+```
+
+Now, if we check the manual entry for strtoul:
+
+```
+ long int strtoul(const char *nptr, char **endptr, int base);
+```
+
+Now, the base is the radix of the numerical representation it parses.
+So we can easily see that the base is 10. Let's convert our proposed
+check number to decimal.
+
+```
+vagrant@erised:~/.../session1/babysimple$ python -c 'print 0xdeadbeef'
+3735928559
+```
+
+Now, let's use this to solve our crackme
+
+```
+vagrant@erised:~/.../session1/babysimple$ ./babysimple 3735928559
+Correct!
+```
+
+Solved!
+
+
+### Babyme
+
+I'll do this with you during the session
+but I'll fill this out in full later
+
+### Babymagic
+
+This one I'll leave as an exercise to you :)
