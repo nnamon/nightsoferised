@@ -8,7 +8,6 @@ Objectives
 ----------
 1. Install PEDA
 2. GDB Primer
-3. Simple reversing practice
 
 1. Installing PEDA
 ------------------
@@ -76,6 +75,9 @@ Type "help" followed by subcommand for full documentation.
 gdb-peda$
 ```
 
+2. GDB Primer
+-------------
+
 Now, let's leave the special peda commands aside for now, and focus on the
 essential GDB commands.
 
@@ -83,12 +85,13 @@ There are couple of things we want to do with GDB:
 
 1. Running a program
 2. Setting a breakpoint within a program
-3. Inspecting the registers
-4. Inspecting the memory
-5. Inquiring about the function call stack
-6. Looking up file and process metadata
+3. Disassembling code
+4. Inspecting the registers
+5. Inspecting the memory
+6. Inquiring about the function call stack
+7. Looking up file and process metadata
 
-### 1.1 Running a program
+### Running a program
 
 We will only look at single threaded binaries this session. We can cover
 multithreaded applications like fork servers in another session.
@@ -245,5 +248,126 @@ Heh
 vagrant@erised:~/.../gdbpractice/neworder$
 ```
 
-### 1.2 Setting breakpoints
+### Setting breakpoints within the program
+
+It's great and all that we can run and attach to programs but we would like to
+do something more useful. Breakpoints are the bread and butter of manual dynamic
+analysis. They allow us to pause execution at a particular point in a program to
+inspect and manipulate the register and memory states.
+
+Note that programmers would probably use breaks by line numbers in their source
+files but as reverse engineers, we do not have this luxury. So we'll mostly deal
+in function symbols and addresses.
+
+Let's take a look at verve again. This time, we will load the binary, set a
+breakpoint on the main function, and run it. Note that we can say there is a
+main function because it exists as a symbol:
+
+```
+vagrant@erised:~/.../gdbpractice/verve$ nm verve
+...
+080484ad T bitter
+...
+080484e3 T main
+080484bf T sweet
+080484d1 T symphony
+...
+vagrant@erised:~/.../gdbpractice/verve$
+```
+
+Running our gdb:
+
+```
+vagrant@erised:~/.../gdbpractice/verve$ gdb verve
+gdb-peda$ break main
+Breakpoint 1 at 0x80484ec: file verve.c, line 17.
+gdb-peda$ r
+Starting program: /home/vagrant/nightsoferised/sessions/session2/gdbpractice/verve/verve
+[----------------------------------registers-----------------------------------]
+EAX: 0x1
+EBX: 0xf7fce000 --> 0x1a9da8
+ECX: 0x7504f908
+EDX: 0xffffd6a4 --> 0xf7fce000 --> 0x1a9da8
+ESI: 0x0
+EDI: 0x0
+EBP: 0xffffd678 --> 0x0
+ESP: 0xffffd650 --> 0x1
+EIP: 0x80484ec (<main+9>:       mov    DWORD PTR [esp+0x1c],0x8048626)
+EFLAGS: 0x286 (carry PARITY adjust zero SIGN trap INTERRUPT direction overflow)
+[-------------------------------------code-------------------------------------]
+   0x80484e4 <main+1>:  mov    ebp,esp
+   0x80484e6 <main+3>:  and    esp,0xfffffff0
+   0x80484e9 <main+6>:  sub    esp,0x20
+=> 0x80484ec <main+9>:  mov    DWORD PTR [esp+0x1c],0x8048626
+   0x80484f4 <main+17>: cmp    DWORD PTR [ebp+0x8],0x4
+   0x80484f8 <main+21>: je     0x8048512 <main+47>
+   0x80484fa <main+23>: mov    eax,DWORD PTR [esp+0x1c]
+   0x80484fe <main+27>: mov    DWORD PTR [esp],eax
+[------------------------------------stack-------------------------------------]
+0000| 0xffffd650 --> 0x1
+0004| 0xffffd654 --> 0xffffd714 --> 0xffffd83a ("/home/vagrant/nightsoferised/sessions/session2/gdbpractice/verve/verve")
+0008| 0xffffd658 --> 0xffffd71c --> 0xffffd881 ("XDG_SESSION_ID=2")
+0012| 0xffffd65c --> 0xf7e5742d (<__cxa_atexit+29>:     test   eax,eax)
+0016| 0xffffd660 --> 0xf7fce3c4 --> 0xf7fcf1e0 --> 0x0
+0020| 0xffffd664 --> 0xf7ffd000 --> 0x20f34
+0024| 0xffffd668 --> 0x804858b (<__libc_csu_init+11>:   add    ebx,0x1a75)
+0028| 0xffffd66c --> 0xf7fce000 --> 0x1a9da8
+[------------------------------------------------------------------------------]
+Legend: code, data, rodata, value
+
+Breakpoint 1, main (argc=0x1, argv=0xffffd714) at verve.c:17
+17          char * message = "No!";
+gdb-peda$
+```
+
+Observe that gdb is making mappings to the source file. This is not by
+accident. It is specifically because the binary was compiled with the debugging
+symbols.
+
+Note that we can also break specifically on addresses. So let's maybe take
+the address of main and try to break on that.
+
+```
+vagrant@erised:~/.../gdbpractice/verve$ gdb verve
+gdb-peda$ break *0x80484e3
+Breakpoint 1 at 0x80484e3: file verve.c, line 16.
+gdb-peda$ r
+Starting program: /home/vagrant/nightsoferised/sessions/session2/gdbpractice/verve/verve
+[----------------------------------registers-----------------------------------]
+EAX: 0x1
+EBX: 0xf7fce000 --> 0x1a9da8
+ECX: 0xced08ef1
+EDX: 0xffffd6a4 --> 0xf7fce000 --> 0x1a9da8
+ESI: 0x0
+EDI: 0x0
+EBP: 0x0
+ESP: 0xffffd67c --> 0xf7e3da83 (<__libc_start_main+243>:        mov    DWORD PTR [esp],eax)
+EIP: 0x80484e3 (<main>: push   ebp)
+EFLAGS: 0x246 (carry PARITY adjust ZERO sign trap INTERRUPT direction overflow)
+[-------------------------------------code-------------------------------------]
+   0x80484de <symphony+13>:     mov    eax,DWORD PTR [ebp-0x4]
+   0x80484e1 <symphony+16>:     leave
+   0x80484e2 <symphony+17>:     ret
+=> 0x80484e3 <main>:    push   ebp
+   0x80484e4 <main+1>:  mov    ebp,esp
+   0x80484e6 <main+3>:  and    esp,0xfffffff0
+   0x80484e9 <main+6>:  sub    esp,0x20
+   0x80484ec <main+9>:  mov    DWORD PTR [esp+0x1c],0x8048626
+[------------------------------------stack-------------------------------------]
+0000| 0xffffd67c --> 0xf7e3da83 (<__libc_start_main+243>:       mov    DWORD PTR [esp],eax)
+0004| 0xffffd680 --> 0x1
+0008| 0xffffd684 --> 0xffffd714 --> 0xffffd83a ("/home/vagrant/nightsoferised/sessions/session2/gdbpractice/verve/verve")
+0012| 0xffffd688 --> 0xffffd71c --> 0xffffd881 ("XDG_SESSION_ID=2")
+0016| 0xffffd68c --> 0xf7feacea (add    ebx,0x12316)
+0020| 0xffffd690 --> 0x1
+0024| 0xffffd694 --> 0xffffd714 --> 0xffffd83a ("/home/vagrant/nightsoferised/sessions/session2/gdbpractice/verve/verve")
+0028| 0xffffd698 --> 0xffffd6b4 --> 0xf6c90ae1
+[------------------------------------------------------------------------------]
+Legend: code, data, rodata, value
+
+Breakpoint 1, main (argc=0x1, argv=0xffffd714) at verve.c:16
+16      int main(int argc, char ** argv) {
+gdb-peda$
+```
+
 
