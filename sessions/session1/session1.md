@@ -742,9 +742,373 @@ Solved!
 
 ### Babyme
 
-I'll do this with you during the session
-but I'll fill this out in full later
+Okay, so this is also another simple binary but this time, the method of input
+is dissimilar.
+
+Let's try to run the program.
+
+```
+vagrant@erised:.../session1/babyme$ ./babyme
+testing
+You lose!
+```
+
+Now, obviously it gets its input through stdin. Now, let's check out how.
+
+```
+vagrant@erised:.../session1/babyme$ ltrace ./babyme
+__libc_start_main(0x804849d, 1, 0xffa353e4, 0x8048560 <unfinished ...>
+scanf(0x804860d, 0xffa35327, 0x804a000, 0x80485b2blah
+)        = 1
+puts("You lose!"You lose!
+)                                         = 10
++++ exited (status 10) +++
+```
+
+So, it's actually using scanf to get the input. As you can see 0x804860d is the
+address of the format string to scanf. Okay, let's take a look at the strings.
+
+```
+vagrant@erised:.../session1/babyme$ strings babyme
+/lib/ld-linux.so.2
+libc.so.6
+_IO_stdin_used
+puts
+__stack_chk_fail
+scanf
+__libc_start_main
+__gmon_start__
+GLIBC_2.0
+GLIBC_2.4
+PTRh
+D$,1
+T$,e3
+[^_]
+This is the potato password!
+%20s
+You win!
+You lose!
+;*2$"
+... snip ...
+```
+
+Now, we can see the format string ("%20s") that is in use, as well as the
+failure and success strings. Our objective is to get the binary to print "You
+Win!"
+
+But, other than that, it also looks like there is another interesting string:
+"This is the potato password!". Maybe that is our password?
+
+```
+vagrant@erised:.../session1/babyme$ ./babyme
+This is the potato password!
+You lose!
+```
+
+Nope, so there's something more complex going on. Let's take a look at the
+disassembly.
+
+```
+Dump of assembler code for function main:
+   0x0804849d <+0>:     push   %ebp
+   0x0804849e <+1>:     mov    %esp,%ebp
+   0x080484a0 <+3>:     and    $0xfffffff0,%esp
+   0x080484a3 <+6>:     sub    $0x30,%esp
+   0x080484a6 <+9>:     mov    %gs:0x14,%eax
+   0x080484ac <+15>:    mov    %eax,0x2c(%esp)
+   0x080484b0 <+19>:    xor    %eax,%eax
+   0x080484b2 <+21>:    movl   $0x80485f0,0x10(%esp)
+   0x080484ba <+29>:    lea    0x17(%esp),%eax
+   0x080484be <+33>:    mov    %eax,0x4(%esp)
+   0x080484c2 <+37>:    movl   $0x804860d,(%esp)
+   0x080484c9 <+44>:    call   0x8048370 <scanf@plt>
+   0x080484ce <+49>:    lea    0x17(%esp),%eax
+   0x080484d2 <+53>:    mov    %eax,0x4(%esp)
+   0x080484d6 <+57>:    mov    0x10(%esp),%eax
+   0x080484da <+61>:    mov    %eax,(%esp)
+   0x080484dd <+64>:    call   0x8048514 <check>
+   0x080484e2 <+69>:    test   %eax,%eax
+   0x080484e4 <+71>:    je     0x80484f4 <main+87>
+   0x080484e6 <+73>:    movl   $0x8048612,(%esp)
+   0x080484ed <+80>:    call   0x8048360 <puts@plt>
+   0x080484f2 <+85>:    jmp    0x8048500 <main+99>
+   0x080484f4 <+87>:    movl   $0x804861b,(%esp)
+   0x080484fb <+94>:    call   0x8048360 <puts@plt>
+   0x08048500 <+99>:    mov    0x2c(%esp),%edx
+   0x08048504 <+103>:   xor    %gs:0x14,%edx
+   0x0804850b <+110>:   je     0x8048512 <main+117>
+   0x0804850d <+112>:   call   0x8048350 <__stack_chk_fail@plt>
+   0x08048512 <+117>:   leave
+   0x08048513 <+118>:   ret
+```
+
+Okay, so if you observe, this bit here handles the reading from the stdin:
+
+```
+   0x080484ba <+29>:    lea    0x17(%esp),%eax
+   0x080484be <+33>:    mov    %eax,0x4(%esp)
+   0x080484c2 <+37>:    movl   $0x804860d,(%esp)
+   0x080484c9 <+44>:    call   0x8048370 <scanf@plt>
+   0x080484ce <+49>:    lea    0x17(%esp),%eax
+```
+
+To make things clearer, let's resolve the strings:
+
+```
+(gdb) x/s 0x804860d
+0x804860d:      "%20s"
+```
+
+So what exactly happens in this disassembled fragment is the destination
+address of the received user input is put on the stack, and then the format
+string. (Why this is in reverse order will be covered later.) Then, the scanf
+library function is called and the destination address is returned in %eax.
+
+So what does the binary do with the user input?
+
+```
+   0x080484d2 <+53>:    mov    %eax,0x4(%esp)
+   0x080484d6 <+57>:    mov    0x10(%esp),%eax
+   0x080484da <+61>:    mov    %eax,(%esp)
+   0x080484dd <+64>:    call   0x8048514 <check>
+   0x080484e2 <+69>:    test   %eax,%eax
+   0x080484e4 <+71>:    je     0x80484f4 <main+87>
+```
+
+It calls the function 'check' with two arguments: the user input, and something
+that was moved into 0x10(%esp) before. This happens to be from this instruction
+
+```
+   0x080484b2 <+21>:    movl   $0x80485f0,0x10(%esp)
+```
+
+Which is actually the string:
+
+```
+(gdb) x/s 0x80485f0
+0x80485f0:      "This is the potato password!"
+```
+
+After that, it checks whether the function call was successful or not (returns
+1 or 0) and branches accordingly:
+
+```
+   0x080484e2 <+69>:    test   %eax,%eax
+   0x080484e4 <+71>:    je     0x80484f4 <main+87>
+   0x080484e6 <+73>:    movl   $0x8048612,(%esp)
+   0x080484ed <+80>:    call   0x8048360 <puts@plt>
+   0x080484f2 <+85>:    jmp    0x8048500 <main+99>
+   0x080484f4 <+87>:    movl   $0x804861b,(%esp)
+   0x080484fb <+94>:    call   0x8048360 <puts@plt>
+```
+
+Resolving the strings:
+
+```
+(gdb) x/s 0x8048612
+0x8048612:      "You win!"
+(gdb) x/s 0x804861b
+0x804861b:      "You lose!"
+```
+
+So, if the return value is 0, it prints "You lose!" to console, otherwise,
+it prints "You Win!".
+
+Let's investigate the check function.
+
+```
+Dump of assembler code for function check:
+   0x08048514 <+0>:     push   %ebp
+   0x08048515 <+1>:     mov    %esp,%ebp
+   0x08048517 <+3>:     sub    $0x10,%esp
+   0x0804851a <+6>:     movl   $0x0,-0x4(%ebp)
+   0x08048521 <+13>:    jmp    0x804854d <check+57>
+   0x08048523 <+15>:    mov    -0x4(%ebp),%eax
+   0x08048526 <+18>:    add    $0xc,%eax
+   0x08048529 <+21>:    mov    %eax,%edx
+   0x0804852b <+23>:    mov    0x8(%ebp),%eax
+   0x0804852e <+26>:    add    %edx,%eax
+   0x08048530 <+28>:    movzbl (%eax),%edx
+   0x08048533 <+31>:    mov    -0x4(%ebp),%ecx
+   0x08048536 <+34>:    mov    0xc(%ebp),%eax
+   0x08048539 <+37>:    add    %ecx,%eax
+   0x0804853b <+39>:    movzbl (%eax),%eax
+   0x0804853e <+42>:    cmp    %al,%dl
+   0x08048540 <+44>:    je     0x8048549 <check+53>
+   0x08048542 <+46>:    mov    $0x0,%eax
+   0x08048547 <+51>:    jmp    0x8048558 <check+68>
+   0x08048549 <+53>:    addl   $0x1,-0x4(%ebp)
+   0x0804854d <+57>:    cmpl   $0x5,-0x4(%ebp)
+   0x08048551 <+61>:    jle    0x8048523 <check+15>
+   0x08048553 <+63>:    mov    $0x1,%eax
+   0x08048558 <+68>:    leave
+   0x08048559 <+69>:    ret
+```
+
+Okay, first thing to notice in the function is that it runs in a loop. Take a
+look at these set of instructions.
+
+```
+   0x0804851a <+6>:     movl   $0x0,-0x4(%ebp)
+   0x08048521 <+13>:    jmp    0x804854d <check+57>
+... stuff here ...
+   0x08048549 <+53>:    addl   $0x1,-0x4(%ebp)
+   0x0804854d <+57>:    cmpl   $0x5,-0x4(%ebp)
+   0x08048551 <+61>:    jle    0x8048523 <check+15>
+```
+
+First, it initialises the loop and then it runs for 6 iterations. Within the
+loop, it does this:
+
+```
+   0x08048523 <+15>:    mov    -0x4(%ebp),%eax
+   0x08048526 <+18>:    add    $0xc,%eax
+   0x08048529 <+21>:    mov    %eax,%edx
+   0x0804852b <+23>:    mov    0x8(%ebp),%eax
+   0x0804852e <+26>:    add    %edx,%eax
+   0x08048530 <+28>:    movzbl (%eax),%edx
+   0x08048533 <+31>:    mov    -0x4(%ebp),%ecx
+   0x08048536 <+34>:    mov    0xc(%ebp),%eax
+   0x08048539 <+37>:    add    %ecx,%eax
+   0x0804853b <+39>:    movzbl (%eax),%eax
+   0x0804853e <+42>:    cmp    %al,%dl
+   0x08048540 <+44>:    je     0x8048549 <check+53>
+   0x08048542 <+46>:    mov    $0x0,%eax
+   0x08048547 <+51>:    jmp    0x8048558 <check+68>
+```
+
+So what does this code fragment do? Let's break it up by looking at the
+features that stand out. Of course, compares are very prominent so let's look
+at that.
+
+```
+   0x0804853e <+42>:    cmp    %al,%dl
+```
+
+So the important registers we have to look at are %eax and %edx. There are two
+further important portions. This is where %eax is set:
+
+```
+   0x08048523 <+15>:    mov    -0x4(%ebp),%eax
+   0x08048526 <+18>:    add    $0xc,%eax
+   0x08048529 <+21>:    mov    %eax,%edx
+   0x0804852b <+23>:    mov    0x8(%ebp),%eax
+   0x0804852e <+26>:    add    %edx,%eax
+   0x08048530 <+28>:    movzbl (%eax),%edx
+```
+
+Now, remember that -0x4(%ebp) is our counter index from the loop above. So,
+what happens here is that 0xc is added to the counter index and that sum is
+in turn added to an argument that was supplied in the call to check (the
+0x8(%ebp)). What is this argument? Let's do some dynamic analysis to get an
+idea of what we're looking at.
+
+```
+(gdb) br *0x0804852b
+Breakpoint 6 at 0x804852b
+(gdb) r
+Starting program: /vagrant/nightsoferised/sessions/session1/babyme/babyme
+testing
+
+Breakpoint 6, 0x0804852b in check ()
+(gdb) x/xw $ebp+0x8
+0xffffd660:     0x080485f0
+(gdb) x/s 0x080485f0
+0x80485f0:      "This is the potato password!"
+```
+
+So, do recall that some arithmetic was done and the sum was added to the
+address 0x080485f0. What does this effectively do? It moves into an offset of
+the string of course.
+
+```
+(gdb) br *0x08048530
+Breakpoint 8 at 0x8048530
+(gdb) c
+Continuing.
+
+Breakpoint 8, 0x08048530 in check ()
+(gdb) info reg eax
+eax            0x80485fc        134514172
+(gdb) x/s 0x80485fc
+0x80485fc:      "potato password!"
+```
+
+So it copies one byte at that particular index! In this iteration's case, it
+will be "p" (hex 0x70).
+
+```
+(gdb) stepi
+0x08048533 in check ()
+(gdb) info reg edx
+edx            0x70     112
+```
+
+Now, we have covered what's in %edx, but what's in %eax? The second portion of
+the fragment:
+
+```
+   0x08048533 <+31>:    mov    -0x4(%ebp),%ecx
+   0x08048536 <+34>:    mov    0xc(%ebp),%eax
+   0x08048539 <+37>:    add    %ecx,%eax
+   0x0804853b <+39>:    movzbl (%eax),%eax
+```
+
+Well since, there were two argument to the function, this is probably our user
+input. Let's verify.
+
+```
+(gdb) br *0x0804853b
+Breakpoint 9 at 0x804853b
+(gdb) c
+Continuing.
+
+Breakpoint 9, 0x0804853b in check ()
+(gdb) x/xw $ebp+0xc
+0xffffd664:     0xffffd677
+(gdb) x/s 0xffffd677
+0xffffd677:     "testing"
+(gdb) stepi
+0x0804853e in check ()
+(gdb) info reg eax
+eax            0x74     116
+```
+
+And yes, it contains the first character of our stdin input. "t" is 0x74 in
+hexadecimal.
+
+So ultimately, what the compare does is check the letters of "potato" and the
+user input one by one. What happens if it fails?
+
+```
+   0x08048540 <+44>:    je     0x8048549 <check+53>
+   0x08048542 <+46>:    mov    $0x0,%eax
+   0x08048547 <+51>:    jmp    0x8048558 <check+68>
+   0x08048549 <+53>:    addl   $0x1,-0x4(%ebp)
+   0x0804854d <+57>:    cmpl   $0x5,-0x4(%ebp)
+   0x08048551 <+61>:    jle    0x8048523 <check+15>
+   0x08048553 <+63>:    mov    $0x1,%eax
+   0x08048558 <+68>:    leave
+   0x08048559 <+69>:    ret
+```
+
+If the characters match, the loop will continue. Otherwise, %eax is set to 0
+and the the function exits.
+
+Now, that we have determined what input we require for the function to return
+a non-zero value, we can solve the crackme.
+
+```
+vagrant@erised:.../session1/babyme$ ./babyme
+potato
+You win!
+```
+
+Solved.
+
 
 ### Babymagic
 
 This one I'll leave as an exercise to you :)
+
+
