@@ -81,11 +81,17 @@ essential GDB commands.
 
 There are couple of things we want to do with GDB:
 
-I. Running a program
-II. Setting a breakpoint within a program
-III. Inspecting the registers
-IV. Inspecting the memory
-V. Inquiring about the function call stack
-VI. Looking up file and process metadata
+1. Running a program
+2. Setting a breakpoint within a program
+3. Inspecting the registers
+4. Inspecting the memory
+5. Inquiring about the function call stack
+6. Looking up file and process metadata
 
+1.1 Running a program
+=====================
 
+We will only look at single threaded binaries this session. We can cover
+multithreaded applications like fork servers in another session.
+
+Typically, you would wish to invoke gdb with the program as an argument.
