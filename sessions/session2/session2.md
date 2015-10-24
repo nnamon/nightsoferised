@@ -481,4 +481,150 @@ gdb-peda$
 
 ### Inspecting the memory
 
+Now, how would you examine the data at a particular memory address? There are
+two ways:
 
+The first would be to use the 'print' command with a dereference:
+
+```
+gdb-peda$ print *0x8048626
+$4 = 0x216f4e
+gdb-peda$
+```
+
+Or we could use 'examine' or 'x' for short.
+
+```
+gdb-peda$ x/xw 0x8048626
+0x8048626:  0x00216f4e
+gdb-peda$ x/s 0x8048626
+0x8048626:  "No!"
+gdb-peda$
+```
+
+Now, examine has a particularly interesting syntax. It comes in the form:
+x/<howmany><format><units>.
+
+Where howmany is how many units you would like to print, units is the size of
+the quantum of data, and format is the representation of that data.
+
+Units is one of:
+1. b - byte
+2. h - half word
+3. w - word
+4. g - giant word
+
+Format is one of:
+1. a - pointer
+2. c - character
+3. d - integer
+4. f - float
+5. o - octal integer
+6. s - c string
+7. t - binary integer
+8. u - unsigned integer
+9. x - hex integer
+
+For example, let's take a look at what's on the stack at the current moment by
+examining what is at the address held in $esp. We will print 32 words
+represented as hexadecimal integers:
+
+```
+gdb-peda$ x/32xw $esp
+0xffffd650: 0x08048626  0xffffd714  0xffffd71c  0xf7e5742d
+0xffffd660: 0xf7fce3c4  0xf7ffd000  0x0804858b  0x08048626
+0xffffd670: 0x08048580  0x00000000  0x00000000  0xf7e3da83
+0xffffd680: 0x00000001  0xffffd714  0xffffd71c  0xf7feacea
+0xffffd690: 0x00000001  0xffffd714  0xffffd6b4  0x0804a020
+0xffffd6a0: 0x0804824c  0xf7fce000  0x00000000  0x00000000
+0xffffd6b0: 0x00000000  0x2566e798  0x1d7f6388  0x00000000
+0xffffd6c0: 0x00000000  0x00000000  0x00000001  0x080483b0
+gdb-peda$
+```
+
+### Inquiring about the function call stack
+
+We are also able to see the entire call stack (assuming the application is well
+behaving) using the 'backtrace' command:
+
+```
+gdb-peda$ backtrace
+#0  0x08048501 in main (argc=0x1, argv=0xffffd714) at verve.c:19
+#1  0xf7e3da83 in __libc_start_main () from /lib/i386-linux-gnu/libc.so.6
+#2  0x080483d1 in _start ()
+gdb-peda$
+```
+
+### Looking up file and process metadata
+
+We can look up process information with 'info proc'.
+
+```
+gdb-peda$ info proc
+process 2828
+cmdline =
+'/home/vagrant/nightsoferised/sessions/session2/gdbpractice/verve/verve'
+cwd = '/home/vagrant/nightsoferised/sessions/session2/gdbpractice/verve'
+exe = '/home/vagrant/nightsoferised/sessions/session2/gdbpractice/verve/verve'
+gdb-peda$
+```
+
+We can also look up what shared libraries are required by the binary with 'info
+sharedlibrary'.
+
+```
+gdb-peda$ info sharedlibrary
+From        To          Syms Read   Shared Object Library
+0xf7fdc860  0xf7ff47ac  Yes (*)     /lib/ld-linux.so.2
+0xf7e3b420  0xf7f6cb6e  Yes (*)     /lib/i386-linux-gnu/libc.so.6
+(*): Shared library is missing debugging information.
+gdb-peda$
+```
+
+We can look up where in memory each segment is mapped to with 'info file'.
+
+```
+gdb-peda$ info file
+Symbols from "/home/vagrant/nightsoferised/sessions/session2/gdbpractice/verve/verve".
+Unix child process:
+    Using the running image of child process 2828.
+    While running this, GDB does not access memory from...
+Local exec file:
+    `/home/vagrant/nightsoferised/sessions/session2/gdbpractice/verve/verve', file type elf32-i386.
+    Entry point: 0x80483b0
+    0x08048154 - 0x08048167 is .interp
+    0x08048168 - 0x08048188 is .note.ABI-tag
+    0x08048188 - 0x080481ac is .note.gnu.build-id
+    0x080481ac - 0x080481cc is .gnu.hash
+    ... snip ...
+    0x080482bc - 0x080482dc is .gnu.version_r
+    0x0804a000 - 0x0804a024 is .got.plt
+    0x0804a024 - 0x0804a02c is .data
+    0x0804a02c - 0x0804a030 is .bss
+    0xf7fdc114 - 0xf7fdc138 is .note.gnu.build-id in /lib/ld-linux.so.2
+    0xf7fdc138 - 0xf7fdc1f8 is .hash in /lib/ld-linux.so.2
+    0xf7fdc1f8 - 0xf7fdc2dc is .gnu.hash in /lib/ld-linux.so.2
+    ... snip ...
+    0xf7fce040 - 0xf7fceebc is .data in /lib/i386-linux-gnu/libc.so.6
+    0xf7fceec0 - 0xf7fd1a7c is .bss in /lib/i386-linux-gnu/libc.so.6
+gdb-peda$
+```
+
+And here's a little teaser for when we start looking at vulnerabilities with
+peda:
+
+```
+gdb-peda$ checksec
+CANARY    : disabled
+FORTIFY   : disabled
+NX        : ENABLED
+PIE       : disabled
+RELRO     : Partial
+gdb-peda$
+```
+
+Conclusion
+----------
+
+And that's it for this session! I hope it was useful! As an exercise, you can
+try to reverse neworder and verve to find out what they do.
