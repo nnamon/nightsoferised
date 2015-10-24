@@ -15,7 +15,7 @@ Objectives
 Installing PEDA is really easy. Spawn up the vagrant box and run the following
 commands:
 
-```
+```console
 vagrant@erised:~$ git clone https://github.com/longld/peda.git ~/peda
 Cloning into '/home/vagrant/peda'...
 remote: Counting objects: 276, done.
@@ -29,7 +29,7 @@ vagrant@erised:~$
 
 Now, let's check that PEDA has been installed.
 
-```
+```console
 vagrant@erised:~$ gdb
 GNU gdb (Ubuntu 7.7-0ubuntu3) 7.7
 Copyright (C) 2014 Free Software Foundation, Inc.
@@ -52,7 +52,7 @@ See that prompt there? That's how you see that peda's running. If you run the
 command 'peda' you should get a pretty long help message describing the options
 available with the new plugin.
 
-```
+```console
 gdb-peda$ peda
 PEDA - Python Exploit Development Assistance for GDB
 For latest update, check peda project page: https://github.com/longld/peda/
