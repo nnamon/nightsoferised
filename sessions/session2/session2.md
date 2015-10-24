@@ -1,5 +1,5 @@
-Session 1 - Baby Steps
-======================
+Session 2 - GDB Digs Bugs!
+==========================
 
 In this session, we'll keep it light and just practice some GDB. We'll also
 install some cool scripts for GDB that make debugging less painful.
@@ -86,10 +86,11 @@ There are couple of things we want to do with GDB:
 1. Running a program
 2. Setting a breakpoint within a program
 3. Disassembling code
-4. Inspecting the registers
-5. Inspecting the memory
-6. Inquiring about the function call stack
-7. Looking up file and process metadata
+4. Stepping through code
+5. Inspecting the registers
+6. Inspecting the memory
+7. Inquiring about the function call stack
+8. Looking up file and process metadata
 
 ### Running a program
 
@@ -369,5 +370,115 @@ Breakpoint 1, main (argc=0x1, argv=0xffffd714) at verve.c:16
 16      int main(int argc, char ** argv) {
 gdb-peda$
 ```
+
+If you issue 'breakpoint' with no arguments, you will set a breakpoint on the
+current instruction pointer.
+
+You should probably be aware that your GDB looks quite drastically different
+from the last session. With a lot more information being presented after a
+breakpoint hits.
+
+### Disassembling
+
+To disassemble at the current instruction pointer, you can simply issue
+'disassemble'.
+
+To disassemble another function, you can use the address as the argument or
+specify the symbolic name.
+
+Let's try disassembling the bitter function.
+
+```
+gdb-peda$ disas bitter
+Dump of assembler code for function bitter:
+   0x080484ad <+0>:     push   ebp
+   0x080484ae <+1>:     mov    ebp,esp
+   0x080484b0 <+3>:     sub    esp,0x10
+   0x080484b3 <+6>:     mov    DWORD PTR [ebp-0x4],0x8048610
+   0x080484ba <+13>:    mov    eax,DWORD PTR [ebp-0x4]
+   0x080484bd <+16>:    leave
+   0x080484be <+17>:    ret
+End of assembler dump.
+gdb-peda$ disas 0x080484ad
+Dump of assembler code for function bitter:
+   0x080484ad <+0>:     push   ebp
+   0x080484ae <+1>:     mov    ebp,esp
+   0x080484b0 <+3>:     sub    esp,0x10
+   0x080484b3 <+6>:     mov    DWORD PTR [ebp-0x4],0x8048610
+   0x080484ba <+13>:    mov    eax,DWORD PTR [ebp-0x4]
+   0x080484bd <+16>:    leave
+   0x080484be <+17>:    ret
+End of assembler dump.
+gdb-peda$
+```
+
+### Stepping through the code
+
+Of course, it would be pretty useful for us if we can take the program step by
+step and watching how the internal states change. So we can achieve this by
+stepping through the instructions. To do this, you can use 'stepi'.
+
+Try stepping until you reach instruction 0x8048501.
+
+
+### Inspecting the registers
+
+Assuming you're halted at 0x8048501, we can use 'info reg' to view the contents
+of the registers at that particular moment of execution.
+
+```
+gdb-peda$ info reg
+eax            0x8048626    0x8048626
+ecx            0x1d7f6388   0x1d7f6388
+edx            0xffffd6a4   0xffffd6a4
+ebx            0xf7fce000   0xf7fce000
+esp            0xffffd650   0xffffd650
+ebp            0xffffd678   0xffffd678
+esi            0x0  0x0
+edi            0x0  0x0
+eip            0x8048501    0x8048501 <main+30>
+eflags         0x293    [ CF AF SF IF ]
+cs             0x23 0x23
+ss             0x2b 0x2b
+ds             0x2b 0x2b
+es             0x2b 0x2b
+fs             0x0  0x0
+gs             0x63 0x63
+gdb-peda$
+```
+
+However, we have something better with peda installed. Issue the command
+'context register'.
+
+```
+gdb-peda$ context register
+[----------------------------------registers-----------------------------------]
+EAX: 0x8048626 --> 0x216f4e ('No!')
+EBX: 0xf7fce000 --> 0x1a9da8
+ECX: 0x1d7f6388
+EDX: 0xffffd6a4 --> 0xf7fce000 --> 0x1a9da8
+ESI: 0x0
+EDI: 0x0
+EBP: 0xffffd678 --> 0x0
+ESP: 0xffffd650 --> 0x8048626 --> 0x216f4e ('No!')
+EIP: 0x8048501 (<main+30>:  call   0x8048370 <puts@plt>)
+EFLAGS: 0x293 (CARRY parity ADJUST zero SIGN trap INTERRUPT direction overflow)
+[------------------------------------------------------------------------------]
+Legend: code, data, rodata, value
+gdb-peda$
+```
+
+That's a lot more readable and with pointer resolutions for easier analysis. We
+even get automated hex to string conversions!
+
+What if we want to just see what's in one register though? We can use 'print'.
+
+```
+gdb-peda$ print $eax
+$1 = 0x8048626
+gdb-peda$
+```
+
+### Inspecting the memory
 
 
