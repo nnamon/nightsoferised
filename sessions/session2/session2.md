@@ -100,7 +100,7 @@ multithreaded applications like fork servers in another session.
 Typically, you would wish to invoke gdb with the program as an argument. Let's
 take Verve as an example. It's in sessions/session2/gdbpractice/verve.
 
-```
+```console
 vagrant@erised:~/.../gdbpractice/verve$ gdb ./verve
 GNU gdb (Ubuntu 7.7-0ubuntu3) 7.7
 Copyright (C) 2014 Free Software Foundation, Inc.
@@ -122,7 +122,7 @@ gdb-peda$
 
 Now that we have loaded the binary, we can run it using 'run'.
 
-```
+```console
 gdb-peda$ run
 Starting program:
 /home/vagrant/nightsoferised/sessions/session2/gdbpractice/verve/verve
@@ -136,7 +136,7 @@ Since we're focus on just getting familiar with GDB, let's cheat a little and
 take a peek at the source code in verve.c. Now, if you look at the start of
 main, you should see the following snippet:
 
-```
+```c
 if (argc != 4) {
         puts(message);
         exit(99);
@@ -146,7 +146,7 @@ if (argc != 4) {
 Now, it's asking for 3 arguments. So we can do that in GDB by running "run arg1
 arg2 arg3".
 
-```
+```console
 gdb-peda$ r abc bcd efg
 Starting program:
 /home/vagrant/nightsoferised/sessions/session2/gdbpractice/verve/verve abc bcd
@@ -162,7 +162,7 @@ another terminal, check for the process id of the neworder process.
 
 In terminal 1:
 
-```
+```console
 vagrant@erised:~/.../gdbpractice/neworder$ ./neworder
 Do you know what Ed Gein said about women?
 
@@ -171,7 +171,7 @@ Do you know what Ed Gein said about women?
 
 In terminal 2:
 
-```
+```console
 vagrant@erised:~/.../sessions/session2$ ps aux | grep neworder
 vagrant   2513  0.0  0.0   2024   280 pts/0    S+   13:03   0:00 ./neworder
 vagrant   2623  0.0  0.1  10460   940 pts/2    S+   13:04   0:00 grep
@@ -183,7 +183,7 @@ In this case, my process id is 2513. Adjust for the results on your own
 machines. Returning to terminal 2, we use GDB to attach to the process with
 ptrace.
 
-```
+```console
 vagrant@erised:~/.../sessions/session2$ sudo gdb -p 2513
 GNU gdb (Ubuntu 7.7-0ubuntu3) 7.7
 ...
@@ -232,7 +232,7 @@ Notice it drops you within kernel_vsyscall. Also, notice the fancy peda
 interface we'll get to play with soon enough. To allow the program to continue
 execution we simply issue "continue" to GDB.
 
-```
+```console
 gdb-peda$ c
 Continuing.
 
@@ -240,7 +240,7 @@ Continuing.
 
 Returning to terminal 1, we can interact with the process as per normal.
 
-```
+```console
 vagrant@erised:~/.../gdbpractice/neworder$ ./neworder
 Do you know what Ed Gein said about women?
 
@@ -264,7 +264,7 @@ Let's take a look at verve again. This time, we will load the binary, set a
 breakpoint on the main function, and run it. Note that we can say there is a
 main function because it exists as a symbol:
 
-```
+```console
 vagrant@erised:~/.../gdbpractice/verve$ nm verve
 ...
 080484ad T bitter
@@ -278,7 +278,7 @@ vagrant@erised:~/.../gdbpractice/verve$
 
 Running our gdb:
 
-```
+```console
 vagrant@erised:~/.../gdbpractice/verve$ gdb verve
 gdb-peda$ break main
 Breakpoint 1 at 0x80484ec: file verve.c, line 17.
@@ -328,7 +328,7 @@ symbols.
 Note that we can also break specifically on addresses. So let's maybe take
 the address of main and try to break on that.
 
-```
+```console
 vagrant@erised:~/.../gdbpractice/verve$ gdb verve
 gdb-peda$ break *0x80484e3
 Breakpoint 1 at 0x80484e3: file verve.c, line 16.
@@ -388,7 +388,7 @@ specify the symbolic name.
 
 Let's try disassembling the bitter function.
 
-```
+```console
 gdb-peda$ disas bitter
 Dump of assembler code for function bitter:
    0x080484ad <+0>:     push   ebp
@@ -426,7 +426,7 @@ Try stepping until you reach instruction 0x8048501.
 Assuming you're halted at 0x8048501, we can use 'info reg' to view the contents
 of the registers at that particular moment of execution.
 
-```
+```console
 gdb-peda$ info reg
 eax            0x8048626    0x8048626
 ecx            0x1d7f6388   0x1d7f6388
@@ -450,7 +450,7 @@ gdb-peda$
 However, we have something better with peda installed. Issue the command
 'context register'.
 
-```
+```console
 gdb-peda$ context register
 [----------------------------------registers-----------------------------------]
 EAX: 0x8048626 --> 0x216f4e ('No!')
@@ -473,7 +473,7 @@ even get automated hex to string conversions!
 
 What if we want to just see what's in one register though? We can use 'print'.
 
-```
+```console
 gdb-peda$ print $eax
 $1 = 0x8048626
 gdb-peda$
@@ -486,7 +486,7 @@ two ways:
 
 The first would be to use the 'print' command with a dereference:
 
-```
+```console
 gdb-peda$ print *0x8048626
 $4 = 0x216f4e
 gdb-peda$
@@ -494,7 +494,7 @@ gdb-peda$
 
 Or we could use 'examine' or 'x' for short.
 
-```
+```console
 gdb-peda$ x/xw 0x8048626
 0x8048626:  0x00216f4e
 gdb-peda$ x/s 0x8048626
@@ -529,7 +529,7 @@ For example, let's take a look at what's on the stack at the current moment by
 examining what is at the address held in $esp. We will print 32 words
 represented as hexadecimal integers:
 
-```
+```console
 gdb-peda$ x/32xw $esp
 0xffffd650: 0x08048626  0xffffd714  0xffffd71c  0xf7e5742d
 0xffffd660: 0xf7fce3c4  0xf7ffd000  0x0804858b  0x08048626
@@ -547,7 +547,7 @@ gdb-peda$
 We are also able to see the entire call stack (assuming the application is well
 behaving) using the 'backtrace' command:
 
-```
+```console
 gdb-peda$ backtrace
 #0  0x08048501 in main (argc=0x1, argv=0xffffd714) at verve.c:19
 #1  0xf7e3da83 in __libc_start_main () from /lib/i386-linux-gnu/libc.so.6
@@ -559,7 +559,7 @@ gdb-peda$
 
 We can look up process information with 'info proc'.
 
-```
+```console
 gdb-peda$ info proc
 process 2828
 cmdline =
@@ -572,7 +572,7 @@ gdb-peda$
 We can also look up what shared libraries are required by the binary with 'info
 sharedlibrary'.
 
-```
+```console
 gdb-peda$ info sharedlibrary
 From        To          Syms Read   Shared Object Library
 0xf7fdc860  0xf7ff47ac  Yes (*)     /lib/ld-linux.so.2
@@ -583,7 +583,7 @@ gdb-peda$
 
 We can look up where in memory each segment is mapped to with 'info file'.
 
-```
+```console
 gdb-peda$ info file
 Symbols from "/home/vagrant/nightsoferised/sessions/session2/gdbpractice/verve/verve".
 Unix child process:
@@ -613,7 +613,7 @@ gdb-peda$
 And here's a little teaser for when we start looking at vulnerabilities with
 peda:
 
-```
+```console
 gdb-peda$ checksec
 CANARY    : disabled
 FORTIFY   : disabled
