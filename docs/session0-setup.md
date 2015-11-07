@@ -8,7 +8,10 @@ So, welcome to this little series of binary fun I am codenaming Erised. Because
 Esrever is really hard to pronounce.
 
 Anyway, these are a few things you have to get ready before the session starts
-tomorrow.
+tomorrow. I make the assumption that participants are using Linux or Mac OSX as
+their base machines, hence the requirement for Vagrant. If you wish to follow
+along in a Virtual Machine or on your base Linux installation, by all means, go
+ahead. You might have to adopt a couple of steps, however.
 
 Vagrant
 -------
@@ -21,7 +24,7 @@ on getting Vagrant up and running.
 Initialise a base box. We will be using Ubuntu 14.04 64 bit as our main
 reversing environment.
 
-```
+```console
 amon@Evanna:~/sproink/erised/environment$ vagrant init ubuntu/trusty64; vagrant up --provider virtualbox
 A `Vagrantfile` has been placed in this directory. You are now
 ready to `vagrant up` your first virtual environment! Please read
@@ -61,7 +64,7 @@ Bringing machine 'default' up with 'virtualbox' provider...
 
 Now, test that your set up works by through SSH.
 
-```
+```console
 amon@Evanna:~/sproink/erised/environment$ vagrant ssh
 Welcome to Ubuntu 14.04.3 LTS (GNU/Linux 3.13.0-65-generic x86_64)
 
@@ -90,7 +93,7 @@ Linux vagrant-ubuntu-trusty-64 3.13.0-65-generic #106-Ubuntu SMP Fri Oct 2 22:08
 
 Now, update Ubuntu.
 
-```
+```console
 vagrant@vagrant-ubuntu-trusty-64:~$ sudo apt-get update
 ... blah ...
 vagrant@vagrant-ubuntu-trusty-64:~$ sudo apt-get upgrade
@@ -104,7 +107,7 @@ vagrant@vagrant-ubuntu-trusty-64:~$
 
 Enable the system to run 32 bit binaries:
 
-```
+```console
 vagrant@vagrant-ubuntu-trusty-64:~$ sudo dpkg --add-architecture i386
 vagrant@vagrant-ubuntu-trusty-64:~$ sudo apt-get update
 vagrant@vagrant-ubuntu-trusty-64:~$ sudo apt-get install libc6:i386 libncurses5:i386 libstdc++6:i386
@@ -113,7 +116,7 @@ vagrant@vagrant-ubuntu-trusty-64:~$ sudo apt-get install libc6:i386 libncurses5:
 
 Install these for now:
 
-```
+```console
 vagrant@vagrant-ubuntu-trusty-64:~$ sudo apt-get install git gcc g++ gdb-multiarch python
 ```
 

@@ -22,7 +22,7 @@ In your virtualised environment you should have set up in Session 0, clone the
 Erised repository to your home directory. We'll have to update it every session
 with the new content in the repository.
 
-```
+```console
 vagrant@erised:~$ git clone
 https://github.com/nnamon/nightsoferised.git
 Cloning into 'nightsoferised'...
@@ -65,7 +65,7 @@ our demotools program.
 
 Hint: It's located in sessions/session1/demotools/.
 
-```
+```console
 vagrant@erised:~$ cd nightsoferised/sessions/session1/demotools/
 vagrant@erised:~/.../session1/demotools$ nm demotools
 0000000000601048 B __bss_start
@@ -122,7 +122,7 @@ during the program's execution.
 
 'nuff said.
 
-```
+```console
 vagrant@erised:~/.../session1/demotools $  ltrace ./demotools
 __libc_start_main(0x40057d, 1, 0x7fffd0a999d8, 0x400610 <unfinished ...>
 printf(nil)                                                                                  = -1
@@ -137,7 +137,7 @@ printf("Helloo!\n"Helloo!
 Likewise, strace lets you trace system calls and signals during the program's
 execution.
 
-```
+```console
 vagrant@erised:~/.../session1/demotools$ strace ./demotools
 execve("./demotools", ["./demotools"], [/* 20 vars */]) = 0
 brk(0)                                  = 0x104c000
@@ -178,7 +178,7 @@ exit_group(8)                           = ?
 Well, this is a little too large to cover in one section but let's just
 demonstrate how to run a binary.
 
-```
+```console
 vagrant@erised:~/.../session1/demotools$ gdb demotools
 GNU gdb (Ubuntu 7.7-0ubuntu3) 7.7
 Copyright (C) 2014 Free Software Foundation, Inc.
@@ -209,7 +209,7 @@ objdump is actually the swiss army knife of extracting information from a
 binary. You can do a whole lot of things with it, but for now, let's just do a
 disassembly.
 
-```
+```console
 vagrant@erised:~/.../session1/demotools$ objdump -d demotools
 
 demotools:     file format elf64-x86-64
@@ -282,7 +282,7 @@ Disassembly of section .init:
 file is something I use for everything from crypto to forensics to reversing.
 It's the most amazing tool in the world. Seriously.
 
-```
+```console
 vagrant@erised:~/.../session1/demotools$ file demotools
 demotools: ELF 64-bit LSB  executable, x86-64, version 1 (SYSV), dynamically
 linked (uses shared libs), for GNU/Linux 2.6.24,
@@ -295,7 +295,7 @@ Another basic tool that you should always use to get a better idea of what you
 are looking at. Don't run it vanilla on [untrusted binaries
 though](http://lcamtuf.blogspot.sg/2014/10/psa-dont-run-strings-on-untrusted-files.html).
 
-```
+```console
 vagrant@erised:~/.../session1/demotools$ strings demotools
 /lib64/ld-linux-x86-64.so.2
 libc.so.6
@@ -344,7 +344,7 @@ able to read for this session.
 
 Consider this fragment:
 
-```
+```console
 000000000040057d <main>:
   40057d:       55                      push   %rbp
   40057e:       48 89 e5                mov    %rsp,%rbp
@@ -377,7 +377,7 @@ numbers are prefixed with $.
 
 Now, contrast the above with something in Intel syntax:
 
-```
+```console
 Dump of assembler code for function main:
    0x000000000040057d <+0>:     push   rbp
    0x000000000040057e <+1>:     mov    rbp,rsp
@@ -401,7 +401,7 @@ AT&T syntax. Also, square brackets.
 
 Important operations to know are:
 
-```
+```console
 40057d: 55                      push   %rbp
 40066a: 5b                      pop    %rbx
 ```
@@ -412,7 +412,7 @@ push happens, the data is pushed into the addressed at %rsp and %rsp is
 incremented (the size depends on the architecture). Pop operations are the
 reverse. Data from memory is put into a register and the %rsp is decremented.
 
-```
+```console
 400588: 48 89 75 f0             mov    %rsi,-0x10(%rbp)
 ```
 
@@ -420,7 +420,7 @@ Move operations are fairly common. They generally move data from register to
 register, register to memory, or memory to register. Offsets from the addresses
 stored in registers are also allowed.
 
-```
+```console
 400581: 48 83 ec 10             sub    $0x10,%rsp
 40042d: 48 83 c4 08             add    $0x8,%rsp
 400634: 31 db                   xor    %ebx,%ebx
@@ -429,7 +429,7 @@ stored in registers are also allowed.
 
 Arithmetic operations are also fairly common.
 
-```
+```console
 4005fc: e8 4f fe ff ff          callq  400450 <printf@plt>
 4005ae: c9                      leaveq
 4005af: c3                      retq
@@ -439,7 +439,7 @@ These instructions are the main ways a program handles function calls and
 returning from those function calls. We won't talk about the call stack this
 session but we will in future sessions.
 
-```
+```console
 400530: 80 3d 11 0b 20 00 00    cmpb   $0x0,0x200b11(%rip)
 400537: 75 11                   jne    40054a <__do_global_dtors_aux+0x1a>
 ```
@@ -449,7 +449,7 @@ program execution takes. These work because comparison (and some arithmetic)
 instructions set certain flags in the processor. These flags are used to check
 whether to take a jump or not.
 
-```
+```console
 400527: ff e2                   jmpq   *%rdx
 ```
 
@@ -466,7 +466,7 @@ Now that's out of the way, let's play around with two simple crackme exercises.
 
 Let's try and run the binary.
 
-```
+```console
 vagrant@erised:~$ cd nightsoferised/sessions/session1/babysimple/
 vagrant@erised:~/.../session1/babysimple$ ./babysimple
 Usage: ./babysimple <guess>
@@ -478,7 +478,7 @@ Wrong!
 
 Okay, let's do our secret file magic!
 
-```
+```console
 vagrant@erised:~/.../session1/babysimple$ file babysimple
 babysimple: ELF 32-bit LSB  executable, Intel 80386, version 1 (SYSV),
 dynamically linked (uses shared libs), for GNU/Linux 2.6.32,
@@ -487,7 +487,7 @@ BuildID[sha1]=0ce4c7e422ebc8dec9d03374d5a3263e154982fa, not stripped
 
 It's a simple unstripped 64 bit elf binary. Now for some strings magic!
 
-```
+```console
 vagrant@erised:~/.../session1/babysimple$ strings babysimple
 /lib/ld-linux.so.2
 libc.so.6
@@ -519,7 +519,7 @@ Looks like our objective is to get the program to output 'Correct!'
 Now, if we objdump the file to disassemble it, we can see that there's only
 the main function that's worth looking at:
 
-```
+```console
 vagrant@erised:~/.../session1/babysimple$ objdump -d babysimple
 ... snip ...
 0804842b <main>:
@@ -573,7 +573,7 @@ vagrant@erised:~/.../session1/babysimple$ objdump -d babysimple
 Now, can we make sense of what's happening here? First, we identify
 the bit that checks whether there are any arguments present:
 
-```
+```console
  804843c:       89 c8                   mov    %ecx,%eax
  804843e:       83 38 01                cmpl   $0x1,(%eax)
  8048441:       7f 17                   jg     804845a <main+0x2f>
@@ -586,7 +586,7 @@ Now, we can guess that whatever is in %eax here is probably the number
 of arguments to the C program (or the argc). How do we know? Let's
 verify by starting gdb and checking. Let's break on 0x804843e.
 
-```
+```console
 vagrant@erised:~/.../session1/babysimple$ gdb babysimple
 GNU gdb (Ubuntu 7.7-0ubuntu3) 7.7
 Copyright (C) 2014 Free Software Foundation, Inc.
@@ -616,7 +616,7 @@ Breakpoint 1, 0x0804843e in main ()
 Well, a value of one is just what you'd expect from giving a program no arguments.
 Let's try to give it some arguments this time.
 
-```
+```console
 (gdb) r 123
 The program being debugged has been started already.
 Start it from the beginning? (y or n) y
@@ -638,7 +638,7 @@ Breakpoint 1, 0x0804843e in main ()
 Our hunch was right. So it is the number of arguments. Now, what does it do with
 this information?
 
-```
+```console
  804843e:       83 38 01                cmpl   $0x1,(%eax)
  8048441:       7f 17                   jg     804845a <main+0x2f>
 ```
@@ -646,7 +646,7 @@ this information?
 It checks if it's greater than it of course! So there must be at least one argument.
 Indeed, if there isn't it prints something.
 
-```
+```console
  8048443:       83 ec 0c                sub    $0xc,%esp
  8048446:       68 30 85 04 08          push   $0x8048530
  804844b:       e8 a0 fe ff ff          call   80482f0 <puts@plt>
@@ -654,14 +654,14 @@ Indeed, if there isn't it prints something.
 
 We can figure out what it prints in gdb.
 
-```
+```console
 (gdb) x/s 0x8048530
 0x8048530:      "Usage: ./babysimple <guess>"
 ```
 
 So it's just a usage string. Let's move on.
 
-```
+```console
  804845a:       8b 40 04                mov    0x4(%eax),%eax
  804845d:       83 c0 04                add    $0x4,%eax
  8048460:       8b 00                   mov    (%eax),%eax
@@ -684,7 +684,7 @@ After that it calls strtoul on it.
 How can we verify this? Let's be lazy and use ltrace since a library
 call is involved.
 
-```
+```console
 vagrant@erised:~/.../session1/babysimple$ ltrace ./babysimple 123
 __libc_start_main(0x804842b, 2, 0xff9cd154, 0x80484b0 <unfinished ...>
 strtol(0xff9ce8bb, 0, 10, 0x80484fb)                                                         = 123
@@ -696,7 +696,7 @@ puts("Wrong!"Wrong!
 Yep, it's calling strtol on our supplied argument. So what does it do
 after converting our argument?
 
-```
+```console
  8048475:       81 7d f4 ef be ad de    cmpl   $0xdeadbeef,-0xc(%ebp)
  804847c:       75 12                   jne    8048490 <main+0x65>
 ```
@@ -704,20 +704,20 @@ after converting our argument?
 Looks like it compares the result to 0xdeadbeef. So does mean we can
 just supply 0xdeadbeef? :D
 
-```
+```console
 vagrant@erised:~/.../session1/babysimple$ ./babysimple 0xdeadbeef
 Wrong!
 ```
 
 Haha, no. If you recall the call to strtoul was this:
 
-```
+```console
 strtoul(0xff9ce8bb, 0, 10, 0x80484fb)
 ```
 
 Now, if we check the manual entry for strtoul:
 
-```
+```console
  long int strtoul(const char *nptr, char **endptr, int base);
 ```
 
@@ -725,14 +725,14 @@ Now, the base is the radix of the numerical representation it parses.
 So we can easily see that the base is 10. Let's convert our proposed
 check number to decimal.
 
-```
+```console
 vagrant@erised:~/.../session1/babysimple$ python -c 'print 0xdeadbeef'
 3735928559
 ```
 
 Now, let's use this to solve our crackme
 
-```
+```console
 vagrant@erised:~/.../session1/babysimple$ ./babysimple 3735928559
 Correct!
 ```
@@ -747,7 +747,7 @@ is dissimilar.
 
 Let's try to run the program.
 
-```
+```console
 vagrant@erised:.../session1/babyme$ ./babyme
 testing
 You lose!
@@ -755,7 +755,7 @@ You lose!
 
 Now, obviously it gets its input through stdin. Now, let's check out how.
 
-```
+```console
 vagrant@erised:.../session1/babyme$ ltrace ./babyme
 __libc_start_main(0x804849d, 1, 0xffa353e4, 0x8048560 <unfinished ...>
 scanf(0x804860d, 0xffa35327, 0x804a000, 0x80485b2blah
@@ -768,7 +768,7 @@ puts("You lose!"You lose!
 So, it's actually using scanf to get the input. As you can see 0x804860d is the
 address of the format string to scanf. Okay, let's take a look at the strings.
 
-```
+```console
 vagrant@erised:.../session1/babyme$ strings babyme
 /lib/ld-linux.so.2
 libc.so.6
@@ -799,7 +799,7 @@ Win!"
 But, other than that, it also looks like there is another interesting string:
 "This is the potato password!". Maybe that is our password?
 
-```
+```console
 vagrant@erised:.../session1/babyme$ ./babyme
 This is the potato password!
 You lose!
@@ -808,7 +808,7 @@ You lose!
 Nope, so there's something more complex going on. Let's take a look at the
 disassembly.
 
-```
+```console
 Dump of assembler code for function main:
    0x0804849d <+0>:     push   %ebp
    0x0804849e <+1>:     mov    %esp,%ebp
@@ -844,7 +844,7 @@ Dump of assembler code for function main:
 
 Okay, so if you observe, this bit here handles the reading from the stdin:
 
-```
+```console
    0x080484ba <+29>:    lea    0x17(%esp),%eax
    0x080484be <+33>:    mov    %eax,0x4(%esp)
    0x080484c2 <+37>:    movl   $0x804860d,(%esp)
@@ -854,7 +854,7 @@ Okay, so if you observe, this bit here handles the reading from the stdin:
 
 To make things clearer, let's resolve the strings:
 
-```
+```console
 (gdb) x/s 0x804860d
 0x804860d:      "%20s"
 ```
@@ -866,7 +866,7 @@ library function is called and the destination address is returned in %eax.
 
 So what does the binary do with the user input?
 
-```
+```console
    0x080484d2 <+53>:    mov    %eax,0x4(%esp)
    0x080484d6 <+57>:    mov    0x10(%esp),%eax
    0x080484da <+61>:    mov    %eax,(%esp)
@@ -878,13 +878,13 @@ So what does the binary do with the user input?
 It calls the function 'check' with two arguments: the user input, and something
 that was moved into 0x10(%esp) before. This happens to be from this instruction
 
-```
+```console
    0x080484b2 <+21>:    movl   $0x80485f0,0x10(%esp)
 ```
 
 Which is actually the string:
 
-```
+```console
 (gdb) x/s 0x80485f0
 0x80485f0:      "This is the potato password!"
 ```
@@ -892,7 +892,7 @@ Which is actually the string:
 After that, it checks whether the function call was successful or not (returns
 1 or 0) and branches accordingly:
 
-```
+```console
    0x080484e2 <+69>:    test   %eax,%eax
    0x080484e4 <+71>:    je     0x80484f4 <main+87>
    0x080484e6 <+73>:    movl   $0x8048612,(%esp)
@@ -904,7 +904,7 @@ After that, it checks whether the function call was successful or not (returns
 
 Resolving the strings:
 
-```
+```console
 (gdb) x/s 0x8048612
 0x8048612:      "You win!"
 (gdb) x/s 0x804861b
@@ -916,7 +916,7 @@ it prints "You Win!".
 
 Let's investigate the check function.
 
-```
+```console
 Dump of assembler code for function check:
    0x08048514 <+0>:     push   %ebp
    0x08048515 <+1>:     mov    %esp,%ebp
@@ -948,7 +948,7 @@ Dump of assembler code for function check:
 Okay, first thing to notice in the function is that it runs in a loop. Take a
 look at these set of instructions.
 
-```
+```console
    0x0804851a <+6>:     movl   $0x0,-0x4(%ebp)
    0x08048521 <+13>:    jmp    0x804854d <check+57>
 ... stuff here ...
@@ -960,7 +960,7 @@ look at these set of instructions.
 First, it initialises the loop and then it runs for 6 iterations. Within the
 loop, it does this:
 
-```
+```console
    0x08048523 <+15>:    mov    -0x4(%ebp),%eax
    0x08048526 <+18>:    add    $0xc,%eax
    0x08048529 <+21>:    mov    %eax,%edx
@@ -981,14 +981,14 @@ So what does this code fragment do? Let's break it up by looking at the
 features that stand out. Of course, compares are very prominent so let's look
 at that.
 
-```
+```console
    0x0804853e <+42>:    cmp    %al,%dl
 ```
 
 So the important registers we have to look at are %eax and %edx. There are two
 further important portions. This is where %eax is set:
 
-```
+```console
    0x08048523 <+15>:    mov    -0x4(%ebp),%eax
    0x08048526 <+18>:    add    $0xc,%eax
    0x08048529 <+21>:    mov    %eax,%edx
@@ -1003,7 +1003,7 @@ in turn added to an argument that was supplied in the call to check (the
 0x8(%ebp)). What is this argument? Let's do some dynamic analysis to get an
 idea of what we're looking at.
 
-```
+```console
 (gdb) br *0x0804852b
 Breakpoint 6 at 0x804852b
 (gdb) r
@@ -1021,7 +1021,7 @@ So, do recall that some arithmetic was done and the sum was added to the
 address 0x080485f0. What does this effectively do? It moves into an offset of
 the string of course.
 
-```
+```console
 (gdb) br *0x08048530
 Breakpoint 8 at 0x8048530
 (gdb) c
@@ -1037,7 +1037,7 @@ eax            0x80485fc        134514172
 So it copies one byte at that particular index! In this iteration's case, it
 will be "p" (hex 0x70).
 
-```
+```console
 (gdb) stepi
 0x08048533 in check ()
 (gdb) info reg edx
@@ -1047,7 +1047,7 @@ edx            0x70     112
 Now, we have covered what's in %edx, but what's in %eax? The second portion of
 the fragment:
 
-```
+```console
    0x08048533 <+31>:    mov    -0x4(%ebp),%ecx
    0x08048536 <+34>:    mov    0xc(%ebp),%eax
    0x08048539 <+37>:    add    %ecx,%eax
@@ -1057,7 +1057,7 @@ the fragment:
 Well since, there were two argument to the function, this is probably our user
 input. Let's verify.
 
-```
+```console
 (gdb) br *0x0804853b
 Breakpoint 9 at 0x804853b
 (gdb) c
@@ -1080,7 +1080,7 @@ hexadecimal.
 So ultimately, what the compare does is check the letters of "potato" and the
 user input one by one. What happens if it fails?
 
-```
+```console
    0x08048540 <+44>:    je     0x8048549 <check+53>
    0x08048542 <+46>:    mov    $0x0,%eax
    0x08048547 <+51>:    jmp    0x8048558 <check+68>
@@ -1098,7 +1098,7 @@ and the the function exits.
 Now, that we have determined what input we require for the function to return
 a non-zero value, we can solve the crackme.
 
-```
+```console
 vagrant@erised:.../session1/babyme$ ./babyme
 potato
 You win!
