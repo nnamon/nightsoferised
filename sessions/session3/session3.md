@@ -1,4 +1,4 @@
-Session 2 - GDB Digs Bugs!
+Session 3 - Night of Decompildation
 ==========================
 
 In this session, we're going to look at reversing byte code of
