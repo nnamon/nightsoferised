@@ -458,4 +458,262 @@ vagrant@erised:~$
 4. Python Crackme
 -----------------
 
-We'll work on the Python crackme in the morty directory.
+We'll work on the Python crackme in the morty directory and as with the Java
+crackme, we notice that the morty.pyc is in bytecode format.
+
+```console
+vagrant@erised:~/.../sessions/session3$ cd morty/
+vagrant@erised:~/.../session3/morty$ cat morty.pyc | xxd
+0000000: 03f3 0d0a d60c 3e56 6300 0000 0000 0000  ......>Vc.......
+0000010: 0002 0000 0040 0000 0073 3800 0000 6400  .....@...s8...d.
+0000020: 0064 0100 6c00 005a 0000 6402 0084 0000  .d..l..Z..d.....
+0000030: 5a01 0064 0300 8400 005a 0200 6503 0064  Z..d.....Z..e..d
+0000040: 0400 6b02 0072 3400 6502 0083 0000 016e  ..k..r4.e......n
+0000050: 0000 6401 0053 2805 0000 0069 ffff ffff  ..d..S(....i....
+0000060: 4e63 0100 0000 0400 0000 0400 0000 4300  Nc............C.
+0000070: 0000 73ab 0000 007c 0000 6a00 0064 0100  ..s....|..j..d..
+0000080: 8301 007d 0100 7c01 0064 0200 197d 0200  ...}..|..d...}..
+0000090: 7c02 006a 0100 8300 007c 0200 6b03 0072  |..j.....|..k..r
+00000a0: 2f00 7402 0053 7403 0074 0400 7c01 0064  /.t..St..t..|..d
+00000b0: 0300 196a 0000 6404 0083 0100 8302 007d  ...j..d........}
+00000c0: 0300 7c03 0064 0200 197c 0300 6403 0019  ..|..d...|..d...
+00000d0: 177c 0300 6405 0019 6b03 0072 6b00 7402  .|..d...k..rk.t.
+00000e0: 0053 7c03 0064 0600 197c 0300 6407 0019  .S|..d...|..d...
+00000f0: 6407 0014 1764 0800 167c 0300 6409 0019  d....d...|..d...
+0000100: 6b03 0072 9300 7402 0053 7c01 0064 0500  k..r..t..S|..d..
+0000110: 1964 0a00 6b03 0072 a700 7402 0053 7405  .d..k..r..t..St.
+0000120: 0053 280b 0000 004e 7301 0000 000a 6900  .S(....Ns.....i.
+0000130: 0000 0069 0100 0000 7401 0000 002d 6902  ...i....t....-i.
+0000140: 0000 0069 0300 0000 6904 0000 0069 0c00  ...i....i....i..
+0000150: 0000 6905 0000 0073 0d00 0000 4d61 7263  ..i....s....Marc
+0000160: 656c 696e 6520 496e 6328 0600 0000 7405  eline Inc(....t.
+... undicipherable stuff ...
+```
+
+Now, let's try running it.
+
+```console
+vagrant@erised:~/.../session3/morty$ python morty.pyc
+Product not registed. Go away!
+```
+
+We probably need to reverse it further. Let's take a look at a method to get at
+the Python bytecode.
+
+The 'dis' module disassembles CPython bytecode.
+
+```python
+vagrant@erised:~/.../session3/morty$ python
+Python 2.7.6 (default, Jun 22 2015, 17:58:13)
+[GCC 4.8.2] on linux2
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import dis
+>>> import morty
+>>> dis.dis(morty)
+Disassembly of main:
+ 18           0 LOAD_GLOBAL              0 (os)
+              3 LOAD_ATTR                1 (path)
+              6 LOAD_ATTR                2 (isfile)
+              9 LOAD_CONST               1 ('license.key')
+             12 CALL_FUNCTION            1
+             15 POP_JUMP_IF_TRUE        33
+
+ 19          18 LOAD_CONST               2 ('Product not registed. Go away!')
+             21 PRINT_ITEM
+             22 PRINT_NEWLINE
+
+ 20          23 LOAD_GLOBAL              3 (exit)
+             26 CALL_FUNCTION            0
+             29 POP_TOP
+             30 JUMP_FORWARD             0 (to 33)
+
+ 22     >>   33 LOAD_GLOBAL              4 (open)
+             36 LOAD_CONST               1 ('license.key')
+             39 CALL_FUNCTION            1
+             42 SETUP_WITH              44 (to 89)
+             45 STORE_FAST               0 (license)
+
+ 23          48 LOAD_FAST                0 (license)
+             51 LOAD_ATTR                5 (read)
+             54 CALL_FUNCTION            0
+             57 STORE_FAST               1 (license_key)
+
+ 24          60 LOAD_GLOBAL              6 (validate)
+             63 LOAD_FAST                1 (license_key)
+             66 CALL_FUNCTION            1
+             69 POP_JUMP_IF_FALSE       80
+
+ 25          72 LOAD_CONST               3 ('Awesome, you get to be a vampire! Registered!')
+             75 PRINT_ITEM
+             76 PRINT_NEWLINE
+             77 JUMP_FORWARD             5 (to 85)
+
+ 27     >>   80 LOAD_CONST               4 ('Your guts get eaten!')
+             83 PRINT_ITEM
+             84 PRINT_NEWLINE
+        >>   85 POP_BLOCK
+             86 LOAD_CONST               0 (None)
+        >>   89 WITH_CLEANUP
+             90 END_FINALLY
+             91 LOAD_CONST               0 (None)
+             94 RETURN_VALUE
+
+Disassembly of validate:
+  4           0 LOAD_FAST                0 (key)
+              3 LOAD_ATTR                0 (split)
+              6 LOAD_CONST               1 ('\n')
+              9 CALL_FUNCTION            1
+             12 STORE_FAST               1 (lines)
+
+  5          15 LOAD_FAST                1 (lines)
+             18 LOAD_CONST               2 (0)
+             21 BINARY_SUBSCR
+             22 STORE_FAST               2 (name)
+
+  6          25 LOAD_FAST                2 (name)
+             28 LOAD_ATTR                1 (upper)
+             31 CALL_FUNCTION            0
+             34 LOAD_FAST                2 (name)
+             37 COMPARE_OP               3 (!=)
+             40 POP_JUMP_IF_FALSE       47
+
+  7          43 LOAD_GLOBAL              2 (False)
+             46 RETURN_VALUE
+
+  8     >>   47 LOAD_GLOBAL              3 (map)
+             50 LOAD_GLOBAL              4 (int)
+             53 LOAD_FAST                1 (lines)
+             56 LOAD_CONST               3 (1)
+             59 BINARY_SUBSCR
+             60 LOAD_ATTR                0 (split)
+             63 LOAD_CONST               4 ('-')
+             66 CALL_FUNCTION            1
+             69 CALL_FUNCTION            2
+             72 STORE_FAST               3 (digs)
+
+  9          75 LOAD_FAST                3 (digs)
+             78 LOAD_CONST               2 (0)
+             81 BINARY_SUBSCR
+             82 LOAD_FAST                3 (digs)
+             85 LOAD_CONST               3 (1)
+             88 BINARY_SUBSCR
+             89 BINARY_ADD
+             90 LOAD_FAST                3 (digs)
+             93 LOAD_CONST               5 (2)
+             96 BINARY_SUBSCR
+             97 COMPARE_OP               3 (!=)
+            100 POP_JUMP_IF_FALSE      107
+
+ 10         103 LOAD_GLOBAL              2 (False)
+            106 RETURN_VALUE
+
+ 11     >>  107 LOAD_FAST                3 (digs)
+            110 LOAD_CONST               6 (3)
+            113 BINARY_SUBSCR
+            114 LOAD_FAST                3 (digs)
+            117 LOAD_CONST               7 (4)
+            120 BINARY_SUBSCR
+            121 LOAD_CONST               7 (4)
+            124 BINARY_MULTIPLY
+            125 BINARY_ADD
+            126 LOAD_CONST               8 (12)
+            129 BINARY_MODULO
+            130 LOAD_FAST                3 (digs)
+            133 LOAD_CONST               9 (5)
+            136 BINARY_SUBSCR
+            137 COMPARE_OP               3 (!=)
+            140 POP_JUMP_IF_FALSE      147
+
+ 12         143 LOAD_GLOBAL              2 (False)
+            146 RETURN_VALUE
+
+ 13     >>  147 LOAD_FAST                1 (lines)
+            150 LOAD_CONST               5 (2)
+            153 BINARY_SUBSCR
+            154 LOAD_CONST              10 ('Marceline Inc')
+            157 COMPARE_OP               3 (!=)
+            160 POP_JUMP_IF_FALSE      167
+
+ 14         163 LOAD_GLOBAL              2 (False)
+            166 RETURN_VALUE
+
+ 15     >>  167 LOAD_GLOBAL              5 (True)
+            170 RETURN_VALUE
+```
+
+This is pretty great but we can also decompile Python bytecode into almost
+perfect Python source code using uncompyle2.
+
+```python
+vagrant@erised:~/.../session3/morty$ uncompyle2 morty.pyc
+# 2015.11.08 09:33:17 UTC
+#Embedded file name: ./morty.py
+import os
+
+def validate(key):
+    lines = key.split('\n')
+    name = lines[0]
+    if name.upper() != name:
+        return False
+    digs = map(int, lines[1].split('-'))
+    if digs[0] + digs[1] != digs[2]:
+        return False
+    if (digs[3] + digs[4] * 4) % 12 != digs[5]:
+        return False
+    if lines[2] != 'Marceline Inc':
+        return False
+    return True
+
+
+def main():
+    if not os.path.isfile('license.key'):
+        print 'Product not registed. Go away!'
+        exit()
+    with open('license.key') as license:
+        license_key = license.read()
+        if validate(license_key):
+            print 'Awesome, you get to be a vampire! Registered!'
+        else:
+            print 'Your guts get eaten!'
+
+
+if __name__ == '__main__':
+    main()
++++ okay decompyling morty.pyc
+# decompiled 1 files: 1 okay, 0 failed, 0 verify failed
+# 2015.11.08 09:33:18 UTC
+```
+
+What this program does is check if the file 'license.key' exists and then
+validate the license.key file. The license.key file is validated if it passes
+the following constraints:
+
+1. The first line contains a name in upper case.
+2. The second line contains numbers separated by a space meeting the criteria.
+3. The third line contains the string 'Marceline Inc'.
+
+This is an example for a valid license.key file:
+
+```
+MASSIVE POTATOES
+10-11-21-5-8-1
+Marceline Inc
+```
+
+Let's run the program again with this sample license.key.
+
+```
+vagrant@erised:~/.../session3/morty$ python morty.pyc
+Awesome, you get to be a vampire! Registered!
+```
+
+And we are done!
+
+5. Bonus Java Content: Javasnoop!
+---------------------------------
+
+So, Ryan's presented a really cool new tool I didn't know about. It's called
+Javasnoop and it can be [downloaded here](http://www.aspectsecurity.com/tools/javasnoop).
+
+The tool lets you hook onto individual functions within the class file and
+modify return values on the fly and more!
