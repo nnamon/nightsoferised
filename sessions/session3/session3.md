@@ -8,8 +8,7 @@ Objectives
 ----------
 1. Java Reversing Set Up
 2. Java Crackme
-3. Python Reversing Set Up
-4. Python Crackme
+3. Python Reversing Set Up 4. Python Crackme
 
 1. Java Reversing Set Up
 ------------------------
