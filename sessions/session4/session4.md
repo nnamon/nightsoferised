@@ -241,5 +241,5 @@ operating environment of the application.
 
 
 [//]: # (Images)
-[basic2stack]: ./basic2stack.png
-[basic3stack]: ./basic3stack.png
+[basic2stack]: ./images/basic2stack.png
+[basic3stack]: ./images/basic3stack.png
