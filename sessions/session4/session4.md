@@ -57,6 +57,28 @@ $ ./basic2
 Hi, my name is Morty. I am 14 years old.
 ```
 
+Let's look at what's happening under the hood:
+
+```console
+gdb-peda$ x/4xw $esp
+0xffff0000: 0x08048440  0x080484d8  0x080484d0  0x0000000e
+gdb-peda$ x/s 0x080484d8
+0x80484d8:  "Hi, my name is %s. I am %d years old.\n"
+gdb-peda$ x/s 0x080484d0
+0x80484d0:  "Morty"
+gdb-peda$ p/d 0x0000000e
+$3 = 14
+```
+
+The stack looks like this:
+
+![basic 2 stack][basic2stack]
+
+
+
 [//]: # (Links)
 [1]: ./formatstring/basic1.c
 [2]: ./formatstring/basic2.c
+
+[//]: # (Images)
+[basic2stack]: ./basic2stack.png
