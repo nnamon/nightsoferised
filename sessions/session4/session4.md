@@ -467,6 +467,305 @@ All clear!
 2. Integer Overflows and Underflows
 -----------------------------------
 
+Integer overflows and underflows happen when arthmetic operations that result in
+too large values are stored in data types that do not have enough space to store
+the entirety of the value. Let's take a look at the following code as an
+example:
+
+```c
+#include <stdio.h>
+
+int main() {
+    unsigned char gem = 50;
+    printf("Gem = %d\n", gem);
+    gem = gem + 206;
+    printf("New Gem = %d\n", gem);
+}
+```
+
+Now, if we expect math to work as it should, we should get `206 + 50 = 256`
+after the addition operation. Let's see if that is what happens when we run the
+program ([over1.c][8]):
+
+```console
+$ ./over1
+Gem = 50
+New Gem = 0
+```
+
+An odd thing, if we didn't know about integer overflows, happened. We expected
+for the new gem to have the value 256, but it contains 0 instead. Why exactly
+does this happen though? If we look at the size of an `unsigned char`, it is an
+unsigned data type that occupies 1 byte in memory. 1 byte is 8 bits. Since it is
+unsigned, all the bits go towards storing the value. The maximum value 8 bits
+can represent is 0b11111111 (255). Let's investigate:
+
+```console
+In [1]: 0b11111111
+Out[1]: 255
+
+In [2]: 255 + 1
+Out[2]: 256
+
+In [3]: bin(256)
+Out[3]: '0b100000000'
+```
+
+Now, when we add 1 to the largest number that can be represented with 8 bits, we
+get a number that can only be represented with 9 bits. So, how can we resolve
+this? We simply truncate the value to 8 bits and store the result.
+
+```console
+In [4]: bin(256 & 0b11111111)
+Out[4]: '0b00000000'
+
+In [5]: 256 & 0b11111111
+Out[5]: 0
+```
+
+This explains why the value of the new gem is 0. Now, this applies to other data
+types as well such as `int` (which is typically 4 bytes in a 32 bit system).
+Underflows work similarly. Let's take a look at the next example
+([under2.c][9]):
+
+```c
+#include <stdio.h>
+
+int main() {
+    unsigned char guys = 3;
+    int i;
+    printf("Onion is trying to steal my G.U.Y.s!\n");
+    printf("I have %d now.\n", guys);
+    for (i = 0; i < 5; i++) {
+        steal_guy(&guys);
+        printf("Oh no, Onion stole one! I have %d left!\n", guys);
+    }
+    printf("What! I have more G.U.Y.s than I started with!\n");
+}
+
+void steal_guy(unsigned char* guy) {
+    *guy = *guy - 1;
+}
+```
+
+Let's see what happens when we run the program:
+
+```console
+$ ./under2
+Onion is trying to steal my G.U.Y.s!
+I have 3 now.
+Oh no, Onion stole one! I have 2 left!
+Oh no, Onion stole one! I have 1 left!
+Oh no, Onion stole one! I have 0 left!
+Oh no, Onion stole one! I have 255 left!
+Oh no, Onion stole one! I have 254 left!
+What! I have more G.U.Y.s than I started with!
+```
+
+Now we can see that in addition to overflows, we also have underflows where once
+a number gets too small to be represented, it loops to become the largest
+number. This is the equivalent of doing the mod operation. In the above example
+the operation done is `(3-5) % 256 = 254`.
+
+Next, let see what happens when we throw signed numbers into the mix. Now, let's
+make the observation that `unsigned char` has the range `0-255` with a total
+number of 256 possible values. Now, an `unsigned char` has the range `-128-127`.
+We won't go into detail on why number representations but here's an example to
+demonstrate that we can make large numbers negative with integer overflows.
+([over3.c][10])
+
+```c
+#include <stdio.h>
+
+int main() {
+    signed char zombies = 123;
+    int i;
+    printf("Pearl: \"There are too many of them! %d to be exact!\"\n", zombies);
+    puts("Steven: \"I have an idea! Instead of killing them, let's make more!\"");
+    puts("Amethyst: \"Wait, what? You're nuts!\"");
+    for (i = 0; i < 7; i++) {
+        make_zombies(&zombies);
+        printf("Random Stranger: \"Ouch, I got bit! Grrgh ugh %d zombies.\n",
+                zombies);
+    }
+    printf("Steven: \"See, there are %d zombies now! And the opposite of " \
+            "zombies are cute cats! Yay cute cats! :3\"\n", zombies);
+}
+
+void make_zombies(signed char* zombies) {
+    *zombies = *zombies + 1;
+}
+```
+
+Will Steven's plan work? Let's find out:
+
+```console
+$ ./over3
+Pearl: "There are too many of them! 123 to be exact!"
+Steven: "I have an idea! Instead of killing them, let's make more!"
+Amethyst: "Wait, what? You're nuts!"
+Random Stranger: "Ouch, I got bit! Grrgh ugh 124 zombies.
+Random Stranger: "Ouch, I got bit! Grrgh ugh 125 zombies.
+Random Stranger: "Ouch, I got bit! Grrgh ugh 126 zombies.
+Random Stranger: "Ouch, I got bit! Grrgh ugh 127 zombies.
+Random Stranger: "Ouch, I got bit! Grrgh ugh -128 zombies.
+Random Stranger: "Ouch, I got bit! Grrgh ugh -127 zombies.
+Random Stranger: "Ouch, I got bit! Grrgh ugh -126 zombies.
+Steven: "See, there are -126 zombies now! And the opposite of zombies are cute cats! Yay cute cats! :3"
+```
+
+While it might seem super weird that Steven's plan to get rid of zombies is to
+make more of them, it works in the computer world. This is because the largest
+value for a `signed char` is 127 and when there's not enough space to hold a
+larger number, it wraps around to the smallest number. Thus, the zombies are
+turned into cute cats.
+
+### How Is This Exploitable
+
+Integer overflows and underflows are not immediately exploitable. One would
+usually have to explore a context a little deeper to discover the side effects
+the odd behaviour would induce. A traditional example is the unbeatable gambling
+game scenario where to get a flag, you have to get an unsurmountable amount of
+money from beating the server. However, this is intentionally made impossible.
+
+Here's something that might pass for a class project ([gambling4.c][11]):
+
+```c
+#include <time.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+int main() {
+    srand(time(NULL));
+    unsigned int money = 40;
+    int i;
+    printf("Welcome to the Tiger Millionaire Casino!\n");
+    printf("Since this is your first time, we'll give you a free $50!\n");
+    for (i = 0; i < 5; i++) {
+        play(&money);
+        printf("You have $%u. Checking if you have enough...\n", money);
+        check(&money);
+    }
+    printf("I'm sorry, you're out of tries. You lose!\n");
+}
+
+void play(unsigned int *money) {
+    int bet = 0;
+    printf("Place your bets: ");
+    scanf("%d", &bet);
+    if (bet > 10 || bet < 0) {
+        printf("Sorry, you can only bet between 0 and 10\n");
+        return;
+    }
+    int toguess = rand();
+    int guess = 0;
+    printf("Make the guess: ");
+    scanf("%d", &guess);
+    if (guess == toguess) {
+        printf("You got it right!\n");
+        *money = *money + bet;
+    }
+    else {
+        printf("You got it wrong!\n");
+        *money = *money - bet;
+    }
+    printf("The answer was: %d.\n", toguess);
+}
+
+void check(unsigned int *money) {
+    if (*money > 5000) {
+        printf("You win!\n");
+        exit(0);
+    }
+}
+```
+
+It's a simple guessing game that awards money if you make a correct guess, and
+subtracts money if you make an incorrect guess. Here's a sample run:
+
+```console
+$ ./gambling4
+Welcome to the Tiger Millionaire Casino!
+Since this is your first time, we'll give you a free $50!
+Place your bets: 1
+Make the guess: 10
+You got it wrong!
+The answer was: 73409706.
+You have $39. Checking if you have enough...
+Place your bets: 1
+Make the guess: 10
+You got it wrong!
+The answer was: 133354826.
+You have $38. Checking if you have enough...
+Place your bets: 1
+Make the guess: 10
+You got it wrong!
+The answer was: 545133448.
+You have $37. Checking if you have enough...
+Place your bets: 1
+Make the guess: 10
+You got it wrong!
+The answer was: 1154205733.
+You have $36. Checking if you have enough...
+Place your bets: 1
+Make the guess: 10
+You got it wrong!
+The answer was: 1459247752.
+You have $35. Checking if you have enough...
+I'm sorry, you're out of tries. You lose!
+```
+
+Now, if you realise, even if you get all 6 tries correct, that is a profit of
+only $60 dollars. That is hardly enough to win. You need more than $5000 to win.
+However, that isn't a problem now that we know about integer underflows. Let's
+just try to make our money wrap around so we'll end up with a lot of money!
+
+```console
+$ ./gambling4
+Welcome to the Tiger Millionaire Casino!
+Since this is your first time, we'll give you a free $50!
+Place your bets: 10
+Make the guess: 1
+You got it wrong!
+The answer was: 61613877.
+You have $30. Checking if you have enough...
+Place your bets: 10
+Make the guess: 1
+You got it wrong!
+The answer was: 899092899.
+You have $20. Checking if you have enough...
+Place your bets: 10
+Make the guess: 1
+You got it wrong!
+The answer was: 1406725995.
+You have $10. Checking if you have enough...
+Place your bets: 10
+Make the guess: 1
+You got it wrong!
+The answer was: 1895919108.
+You have $0. Checking if you have enough...
+Place your bets: 10
+Make the guess: 1
+You got it wrong!
+The answer was: 1657019656.
+You have $4294967286. Checking if you have enough...
+You win!
+```
+
+Non-contrived examples exist in the wild: integer overflows and underflows
+induce unexpected behaviours in applications and are rather subtle to detect.
+For example, [CVE-2015-8370][12] is a Grub2 Authentication Bypass discovered by
+Hector Marco and Ismael Ripoll that has an integer underflow at it's base. It
+allows an attacker to bypass any Grub authentication by simply pressing the
+backspace key 28 times.
+
+It's a pretty cool discovery check the link to read the details.
+
+
+3. Memory Corruption Vulnerabilities
+------------------------------------
+
+Memory corruption vulnerabilities are the bread and butter
 
 [//]: # (Links)
 [1]: ./formatstring/basic1.c
@@ -476,6 +775,11 @@ All clear!
 [5]: ./formatstring/basic5.c
 [6]: ./formatstring/basic6.c
 [7]: ./formatstring/basic7.c
+[8]: ./overunder/over1.c
+[9]: ./overunder/under2.c
+[10]: ./overunder/over3.c
+[11]: ./overunder/gambling4.c
+[12]: http://hmarco.org/bugs/CVE-2015-8370-Grub2-authentication-bypass.html
 
 [//]: # (Images)
 [basic2stack]: ./images/basic2stack.png
