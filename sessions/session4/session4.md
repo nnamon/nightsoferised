@@ -1,5 +1,5 @@
-Session 4 - Intro to Vulns
-==========================
+Session 4 - Intro to Vulns Part 1
+=================================
 
 In this session, we will take a broad look at the common classes of
 vulnerabilities present in binary based executables. These include memory
