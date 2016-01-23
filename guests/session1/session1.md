@@ -31,14 +31,14 @@ One very useful trick in wireshark is the ability to follow a stream. Let's try 
 ![tcp stream][stream]
 
 Another useful tool is the expert info (Analyze > Expert Info). You can get a quick sense of what is happening in this pane. 
-![tcp stream][expertinfo]
+![expert info][expertinfo]
 
 
 ### babyCap
 Alright. Let's look at the same packet capture (babyCap.pcapng) and try to analysis what is is happening. From the expert info, we saw a bunch of https request and finally some request to port 23. Let's look at what is happening on port 23 (right click > Find Frame). 
 
 Noticed this is actually a capture of a telnet session. Let's follow the stream. 
-![tcp stream][babyCap]
+![baby capture][babyCap]
 
 From here, we can observe the entire telnet session. Notice some of the letter are repeated 
 - ccoossmmoo
