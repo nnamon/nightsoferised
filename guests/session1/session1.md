@@ -13,9 +13,7 @@ Objectives
 ----------------
 For this session, you will need Wireshark. You can download it from https://www.wireshark.org/#download.
 
-### babyCap
 Let's open one of the packet capture, located in guests/session1/babyCap/babyCap.pcapng. 
-
 
 ![wireshark interface][wireshark1]
 We will briefly explore the various part of the interface of Wireshark, before looking at the content of the packet capture. 
@@ -35,8 +33,18 @@ One very useful trick in wireshark is the ability to follow a stream. Let's try 
 Another useful tool is the expert info (Analyze > Expert Info). You can get a quick sense of what is happening in this pane. 
 ![tcp stream][expertinfo]
 
-Alright. Let's get back to this packet capture and try to analysis what is is happening?
 
+### babyCap
+Alright. Let's look at the same packet capture (babyCap.pcapng) and try to analysis what is is happening. From the expert info, we saw a bunch of https request and finally some request to port 23. Let's look at what is happening on port 23 (right click > Find Frame). 
+
+Noticed this is actually a capture of a telnet session. Let's follow the stream. 
+![tcp stream][babyCap]
+
+From here, we can observe the entire telnet session. Notice some of the letter are repeated 
+- ccoossmmoo
+- eexxiitt
+
+Can anyone guess why? 
 
 ### babyPortScan
 Let's open one of the packet capture, located in guests/session1/babyPortScan/babyPortScan.pcapng. 
@@ -121,3 +129,4 @@ Folks. That's all for this session...
 [stream]: ./images/stream.JPG
 [babyfile]: ./images/wireshark_file.JPG
 [expertinfo]: ./images/expertinfo.JPG
+[babyCap]: ./images/babyCap.JPG
