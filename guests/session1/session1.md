@@ -19,6 +19,7 @@ Let's open one of the packet capture, located in guests/session1/babyCap/babyCap
 
 ![wireshark interface][wireshark1]
 We will briefly explore the interface of Wireshark, before looking at the content of the packet capture. 
+
 1. "Packet List" Pane
 This pane displays aall packets in the current packet capture file. Each packet is shown in a single line. In this pane, you can usually look at brief information such as the source, destination address, protocol and information about the packet content. 
 
@@ -79,7 +80,7 @@ And you can address it more complex expression by using the logical operation li
 
 3. File extraction
 ------------------
-Very often, file such as binaries and image files are transmitted over the network. Let's take a look at how to extract such items from the packet capture. 
+Very often, files such as binaries and image files are transmitted over the network. Let's take a look at how to extract such items from the packet capture. 
 
 ### babyFile
 In this exercise, let's open guests/session1/babyFile/babyFile.pcapng. This is a rather short packet capture. 
