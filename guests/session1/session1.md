@@ -18,7 +18,7 @@ Let's open one of the packet capture, located in guests/session1/babyCap/babyCap
 
 
 ![wireshark interface][wireshark1]
-We will briefly explore the interface of Wireshark, before looking at the content of the packet capture. 
+We will briefly explore the various part of the interface of Wireshark, before looking at the content of the packet capture. 
 
 1. "Packet List" Pane
 This pane displays aall packets in the current packet capture file. Each packet is shown in a single line. In this pane, you can usually look at brief information such as the source, destination address, protocol and information about the packet content. 
@@ -28,6 +28,12 @@ This shows the current packet in depth. You can look at the various headers.
 
 3. "Packet Bytes" Pane
 This shows the data of the current packet in hex and ascii. 
+
+One very useful trick in wireshark is the ability to follow a stream. Let's try with a http packet. Right click on any of the HTTP packet > Follow TCP Stream. This is a very useful way to visualize what the application layers will see. 
+![tcp stream][stream]
+
+Another useful tool is the expert info (Analyze > Expert Info). You can get a quick sense of what is happening in this pane. 
+![tcp stream][expertinfo]
 
 Alright. Let's get back to this packet capture and try to analysis what is is happening?
 
@@ -112,4 +118,6 @@ Folks. That's all for this session...
 
 [//]: # (Images)
 [wireshark1]: ./images/wireshark1.JPG
+[stream]: ./images/stream.JPG
 [babyfile]: ./images/wireshark_file.JPG
+[expertinfo]: ./images/expertinfo.JPG
