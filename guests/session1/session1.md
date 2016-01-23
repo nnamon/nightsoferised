@@ -129,4 +129,4 @@ Folks. That's all for this session...
 [stream]: ./images/stream.JPG
 [babyfile]: ./images/wireshark_file.JPG
 [expertinfo]: ./images/expertinfo.JPG
-[babyCap]: ./images/babyCap.JPG
+[babyCap]: ./images/babycap.JPG
