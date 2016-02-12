@@ -13,8 +13,13 @@ Engineering and Exploitation.
 3. [Session 3][4] - Night of Decompildation
 4. [Session 4][5] - Intro to Vulns Part 1
 
+## Guest Sessions
+
+1. [Wireshark 101][6] - Intro to Packet Analysis by Jun Hao
+
 [1]: ./docs/session0-setup.md
 [2]: ./sessions/session1/session1.md
 [3]: ./sessions/session2/session2.md
 [4]: ./sessions/session3/session3.md
 [5]: ./sessions/session4/session4.md
+[6]: ./guests/session1/session1.md
